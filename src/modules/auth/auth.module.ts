@@ -4,9 +4,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserEntity } from './domain/user.entity';
-import { RefreshTokenEntity } from './domain/refresh-token.entity';
+import { SessionEntity } from './domain/session.entity';
 import { UserRepository } from './infrastructure/user.repository';
-import { RefreshTokenRepository } from './infrastructure/refresh-token.repository';
+import { SessionRepository } from './infrastructure/session.repository';
 import { JwtStrategy } from './infrastructure/jwt.strategy';
 import { JwtAuthGuard } from './infrastructure/jwt-auth.guard';
 import { AuthService } from './application/auth.service';
@@ -16,7 +16,7 @@ import { parseDurationToSeconds } from '../../shared/parse-duration';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserEntity, RefreshTokenEntity]),
+    TypeOrmModule.forFeature([UserEntity, SessionEntity]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -38,7 +38,7 @@ import { parseDurationToSeconds } from '../../shared/parse-duration';
   providers: [
     AuthService,
     UserRepository,
-    RefreshTokenRepository,
+    SessionRepository,
     JwtStrategy,
     JwtAuthGuard,
   ],

@@ -18,6 +18,10 @@ export class UserRepository {
     return this.repo.findOne({ where: { email } });
   }
 
+  async findByPhone(phoneE164: string): Promise<UserEntity | null> {
+    return this.repo.findOne({ where: { phoneE164 } });
+  }
+
   async create(data: Partial<UserEntity>): Promise<UserEntity> {
     const user = this.repo.create(data);
     return this.repo.save(user);

@@ -6,17 +6,12 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { RefreshTokenEntity } from './refresh-token.entity';
-
-export enum UserRole {
-  USER = 'user',
-  ADMIN = 'admin',
-}
+import { SessionEntity } from './session.entity';
 
 export enum UserStatus {
-  ACTIVE = 'active',
-  INACTIVE = 'inactive',
-  SUSPENDED = 'suspended',
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  SUSPENDED = 'SUSPENDED',
 }
 
 @Entity('users')
@@ -24,37 +19,33 @@ export class UserEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 255, unique: true })
+  @Column({ type: 'varchar', length: 320, unique: true })
   email: string;
 
-  @Column({ type: 'varchar', length: 100 })
-  name: string;
-
-  @Column({ type: 'varchar', length: 255, name: 'password_hash' })
+  @Column({ type: 'varchar', name: 'password_hash' })
   passwordHash: string;
 
-  @Column({
-    type: 'enum',
-    enum: UserRole,
-    default: UserRole.USER,
-  })
-  role: UserRole;
+  @Column({ type: 'varchar', length: 24, unique: true, name: 'phone_e164' })
+  phoneE164: string;
 
   @Column({
-    type: 'enum',
-    enum: UserStatus,
-    default: UserStatus.ACTIVE,
+    type: 'boolean',
+    default: false,
+    name: 'is_phone_verified',
   })
+  isPhoneVerified: boolean;
+
+  @Column({ type: 'varchar', default: UserStatus.ACTIVE })
   status: UserStatus;
 
-  @OneToMany(() => RefreshTokenEntity, (token) => token.user, {
+  @OneToMany(() => SessionEntity, (session) => session.user, {
     cascade: true,
   })
-  refreshTokens: RefreshTokenEntity[];
+  sessions: SessionEntity[];
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
   updatedAt: Date;
 }
