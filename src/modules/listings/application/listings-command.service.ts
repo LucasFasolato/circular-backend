@@ -15,13 +15,13 @@ import {
   UploadedPhotoFile,
 } from '../infrastructure/local-listing-photo-storage.service';
 import { UserRepository } from '../../auth/infrastructure/user.repository';
+import { ListingModerationWorkflowService } from '../../moderation/application/listing-moderation-workflow.service';
 import { ListingDetailResponseDto } from '../presentation/dto/listing-response.dto';
 import {
   canArchiveListing,
   canEditListing,
   canPauseListing,
   canResumeListing,
-  canSubmitListingForReview,
 } from '../domain/listing-state.policy';
 import { ListingState } from '../domain/listing-state.enum';
 import { CurrencyCode } from '../domain/currency-code.enum';
@@ -46,6 +46,7 @@ export class ListingsCommandService {
     private readonly listingPhotoRepository: ListingPhotoRepository,
     private readonly localListingPhotoStorageService: LocalListingPhotoStorageService,
     private readonly listingQueryService: ListingQueryService,
+    private readonly listingModerationWorkflowService: ListingModerationWorkflowService,
   ) {}
 
   async createDraft(
@@ -294,28 +295,10 @@ export class ListingsCommandService {
     ownerUserId: string,
     listingId: string,
   ): Promise<ListingDetailResponseDto> {
-    const listing = await this.getOwnedListing(listingId, ownerUserId);
-
-    if (!canSubmitListingForReview(listing.state as ListingState)) {
-      throw new ValidationAppError('Listing cannot be submitted for review', [
-        {
-          field: 'state',
-          message: 'Only DRAFT or OBSERVED listings can be submitted',
-        },
-      ]);
-    }
-
-    if (listing.photos.length < LISTING_LIMITS.MIN_PHOTOS_TO_SUBMIT) {
-      throw new ValidationAppError('Listing needs more photos', [
-        {
-          field: 'photos',
-          message: `At least ${LISTING_LIMITS.MIN_PHOTOS_TO_SUBMIT} photos are required`,
-        },
-      ]);
-    }
-
-    listing.state = ListingState.IN_REVIEW;
-    await this.listingRepository.save(listing);
+    await this.listingModerationWorkflowService.submitForReview(
+      ownerUserId,
+      listingId,
+    );
 
     return this.listingQueryService.getById(listingId, ownerUserId);
   }
@@ -349,6 +332,10 @@ export class ListingsCommandService {
         { field: 'state', message: 'Only PAUSED listings can be resumed' },
       ]);
     }
+
+    await this.listingModerationWorkflowService.assertHasApprovedReview(
+      listingId,
+    );
 
     listing.state = ListingState.PUBLISHED;
     await this.listingRepository.save(listing);

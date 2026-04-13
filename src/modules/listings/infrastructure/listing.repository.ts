@@ -38,7 +38,15 @@ export class ListingRepository {
   }
 
   async findById(listingId: string): Promise<ListingEntity | null> {
-    return this.repo.findOne({
+    return this.findByIdWithManager(listingId);
+  }
+
+  async findByIdWithManager(
+    listingId: string,
+    manager?: EntityManager,
+  ): Promise<ListingEntity | null> {
+    const repo = manager ? manager.getRepository(ListingEntity) : this.repo;
+    return repo.findOne({
       where: { id: listingId },
       relations: ['garment', 'photos', 'tradePreference', 'dominantPhoto'],
       order: {

@@ -7,6 +7,7 @@ import { authConfig } from './config/auth.config';
 import { databaseConfig } from './config/database.config';
 import { HealthModule } from './modules/health/health.module';
 import { ListingsModule } from './modules/listings/listings.module';
+import { ModerationModule } from './modules/moderation/moderation.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
 
@@ -34,6 +35,7 @@ import { ProfilesModule } from './modules/profiles/profiles.module';
     AuthModule,
     ProfilesModule,
     ListingsModule,
+    ModerationModule,
   ],
 })
 export class AppModule {}

@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserEntity } from '../auth/domain/user.entity';
 import { JwtAuthGuard } from '../auth/infrastructure/jwt-auth.guard';
 import { UserRepository } from '../auth/infrastructure/user.repository';
+import { ModerationModule } from '../moderation/moderation.module';
 import { PublicProfileEntity } from '../profiles/domain/public-profile.entity';
 import { ListingQueryService } from './application/listing-query.service';
 import { ListingsCommandService } from './application/listings-command.service';
@@ -24,6 +25,7 @@ import { ListingsController } from './presentation/listings.controller';
 
 @Module({
   imports: [
+    ModerationModule,
     TypeOrmModule.forFeature([
       UserEntity,
       PublicProfileEntity,

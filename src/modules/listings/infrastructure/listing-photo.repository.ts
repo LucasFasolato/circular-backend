@@ -22,9 +22,29 @@ export class ListingPhotoRepository {
   }
 
   async findByListingId(listingId: string): Promise<ListingPhotoEntity[]> {
-    return this.repo.find({
+    return this.findByListingIdWithManager(listingId);
+  }
+
+  async findByListingIdWithManager(
+    listingId: string,
+    manager?: EntityManager,
+  ): Promise<ListingPhotoEntity[]> {
+    const repo = manager
+      ? manager.getRepository(ListingPhotoEntity)
+      : this.repo;
+    return repo.find({
       where: { listingId },
       order: { position: 'ASC' },
     });
+  }
+
+  async saveMany(
+    photos: ListingPhotoEntity[],
+    manager?: EntityManager,
+  ): Promise<ListingPhotoEntity[]> {
+    const repo = manager
+      ? manager.getRepository(ListingPhotoEntity)
+      : this.repo;
+    return repo.save(photos);
   }
 }

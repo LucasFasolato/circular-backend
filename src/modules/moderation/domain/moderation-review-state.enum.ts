@@ -1,0 +1,7 @@
+export enum ModerationReviewState {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  OBSERVED = 'OBSERVED',
+  REJECTED = 'REJECTED',
+  SUPERSEDED = 'SUPERSEDED',
+}
