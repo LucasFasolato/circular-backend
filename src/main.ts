@@ -1,7 +1,10 @@
+import { existsSync, mkdirSync } from 'fs';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import express from 'express';
+import { join } from 'path';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { SuccessResponseInterceptor } from './common/interceptors/success-response.interceptor';
@@ -21,6 +24,12 @@ async function bootstrap(): Promise<void> {
   const nodeEnv = appConf?.nodeEnv ?? 'development';
 
   app.setGlobalPrefix('v1');
+
+  const uploadsDir = join(process.cwd(), 'uploads');
+  if (!existsSync(uploadsDir)) {
+    mkdirSync(uploadsDir, { recursive: true });
+  }
+  app.use('/uploads', express.static(uploadsDir));
 
   app.enableCors({
     origin:
