@@ -7,13 +7,13 @@ export class UserProfileDto {
   @ApiProperty({ example: 'user@example.com' })
   email: string;
 
-  @ApiProperty({ example: 'John Doe' })
-  name: string;
+  @ApiProperty({ example: '+12125551234' })
+  phone: string;
 
-  @ApiProperty({ example: 'user', enum: ['user', 'admin'] })
-  role: string;
+  @ApiProperty({ example: false })
+  isPhoneVerified: boolean;
 
-  @ApiProperty({ example: 'active', enum: ['active', 'inactive', 'suspended'] })
+  @ApiProperty({ example: 'ACTIVE', enum: ['ACTIVE', 'INACTIVE', 'SUSPENDED'] })
   status: string;
 
   @ApiProperty({ example: '2024-01-01T00:00:00.000Z' })
