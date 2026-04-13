@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
+import { DataSource } from 'typeorm';
 import { ConflictError } from '../../../common/errors/conflict.error';
 import { UnauthorizedError } from '../../../common/errors/unauthorized.error';
 import { NotFoundError } from '../../../common/errors/not-found.error';
@@ -16,6 +17,7 @@ import { AuthTokensDto } from '../presentation/dto/auth-tokens.dto';
 import { UserProfileDto } from '../presentation/dto/user-profile.dto';
 import { UserEntity, UserStatus } from '../domain/user.entity';
 import { JwtPayload } from '../../../shared/jwt-payload.interface';
+import { ProfileBootstrapService } from '../../profiles/application/profile-bootstrap.service';
 
 interface SessionMeta {
   ipAddress?: string;
@@ -29,6 +31,8 @@ export class AuthService {
     private readonly sessionRepo: SessionRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly dataSource: DataSource,
+    private readonly profileBootstrapService: ProfileBootstrapService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthTokensDto> {
@@ -55,12 +59,28 @@ export class AuthService {
       parallelism: 4,
     });
 
-    const user = await this.userRepo.create({
-      email: dto.email.toLowerCase(),
-      phoneE164: dto.phone,
-      passwordHash,
-      isPhoneVerified: false,
-      status: UserStatus.ACTIVE,
+    const user = await this.dataSource.transaction(async (manager) => {
+      const createdUser = await this.userRepo.create(
+        {
+          email: dto.email.toLowerCase(),
+          phoneE164: dto.phone,
+          passwordHash,
+          isPhoneVerified: false,
+          status: UserStatus.ACTIVE,
+        },
+        manager,
+      );
+
+      await this.profileBootstrapService.bootstrapForRegisteredUser(
+        {
+          userId: createdUser.id,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+        },
+        manager,
+      );
+
+      return createdUser;
     });
 
     return this.issueTokenPair(user);

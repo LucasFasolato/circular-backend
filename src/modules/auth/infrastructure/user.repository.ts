@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { UserEntity } from '../domain/user.entity';
 
 @Injectable()
@@ -22,12 +22,17 @@ export class UserRepository {
     return this.repo.findOne({ where: { phoneE164 } });
   }
 
-  async create(data: Partial<UserEntity>): Promise<UserEntity> {
-    const user = this.repo.create(data);
-    return this.repo.save(user);
+  async create(
+    data: Partial<UserEntity>,
+    manager?: EntityManager,
+  ): Promise<UserEntity> {
+    const repo = manager ? manager.getRepository(UserEntity) : this.repo;
+    const user = repo.create(data);
+    return repo.save(user);
   }
 
-  async save(user: UserEntity): Promise<UserEntity> {
-    return this.repo.save(user);
+  async save(user: UserEntity, manager?: EntityManager): Promise<UserEntity> {
+    const repo = manager ? manager.getRepository(UserEntity) : this.repo;
+    return repo.save(user);
   }
 }

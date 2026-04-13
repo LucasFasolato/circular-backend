@@ -13,9 +13,11 @@ import { AuthService } from './application/auth.service';
 import { AuthController } from './presentation/auth.controller';
 import { AuthConfig } from '../../config/auth.config';
 import { parseDurationToSeconds } from '../../shared/parse-duration';
+import { ProfilesModule } from '../profiles/profiles.module';
 
 @Module({
   imports: [
+    ProfilesModule,
     TypeOrmModule.forFeature([UserEntity, SessionEntity]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
