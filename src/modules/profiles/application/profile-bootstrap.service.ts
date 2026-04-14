@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
+import { ReputationProfileSnapshotRepository } from '../../reputation/infrastructure/reputation-profile-snapshot.repository';
 import { PublicProfileRepository } from '../infrastructure/public-profile.repository';
-import { ReputationProfileRepository } from '../infrastructure/reputation-profile.repository';
 import { TrustProfileRepository } from '../infrastructure/trust-profile.repository';
 
 interface BootstrapRegisteredUserInput {
@@ -15,7 +15,7 @@ export class ProfileBootstrapService {
   constructor(
     private readonly publicProfileRepository: PublicProfileRepository,
     private readonly trustProfileRepository: TrustProfileRepository,
-    private readonly reputationProfileRepository: ReputationProfileRepository,
+    private readonly reputationProfileRepository: ReputationProfileSnapshotRepository,
   ) {}
 
   async bootstrapForRegisteredUser(

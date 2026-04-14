@@ -13,6 +13,7 @@ import { PurchaseIntentRepository } from '../interactions/infrastructure/purchas
 import { ProposedListingCommitmentRepository } from '../interactions/infrastructure/proposed-listing-commitment.repository';
 import { TradeProposalRepository } from '../interactions/infrastructure/trade-proposal.repository';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ReputationModule } from '../reputation/reputation.module';
 import { ConversationMessageEntity } from './domain/conversation-message.entity';
 import { ConversationThreadEntity } from './domain/conversation-thread.entity';
 import { MatchSessionEntity } from './domain/match-session.entity';
@@ -32,6 +33,7 @@ import { MatchSurfaceBuilder } from './read-models/match-surface.builder';
 @Module({
   imports: [
     NotificationsModule,
+    ReputationModule,
     TypeOrmModule.forFeature([
       UserEntity,
       PublicProfileEntity,

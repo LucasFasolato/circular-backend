@@ -5,6 +5,7 @@ import { listingNotFoundError } from '../../listings/domain/listing-errors';
 import { ListingState } from '../../listings/domain/listing-state.enum';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
 import { NotificationCommandService } from '../../notifications/application/notification-command.service';
+import { ReputationRecordingService } from '../../reputation/application/reputation-recording.service';
 import { ProposedListingCommitmentRepository } from '../../interactions/infrastructure/proposed-listing-commitment.repository';
 import { PurchaseIntentRepository } from '../../interactions/infrastructure/purchase-intent.repository';
 import { TradeProposalRepository } from '../../interactions/infrastructure/trade-proposal.repository';
@@ -46,6 +47,7 @@ export class MatchCommandService {
     private readonly matchSurfaceBuilder: MatchSurfaceBuilder,
     private readonly listingRepository: ListingRepository,
     private readonly notificationCommandService: NotificationCommandService,
+    private readonly reputationRecordingService: ReputationRecordingService,
     private readonly purchaseIntentRepository: PurchaseIntentRepository,
     private readonly tradeProposalRepository: TradeProposalRepository,
     private readonly proposedListingCommitmentRepository: ProposedListingCommitmentRepository,
@@ -118,6 +120,7 @@ export class MatchCommandService {
           match.id,
           manager,
         );
+        await this.reputationRecordingService.recordCompleted(match, manager);
         await this.notificationCommandService.notifyMatchCompletedMany(
           [
             {
@@ -387,6 +390,19 @@ export class MatchCommandService {
         match.id,
         manager,
       );
+      if (terminalState === MatchSessionState.FAILED) {
+        await this.reputationRecordingService.recordFailed(
+          match,
+          viewerUserId,
+          manager,
+        );
+      } else {
+        await this.reputationRecordingService.recordCancelled(
+          match,
+          viewerUserId,
+          manager,
+        );
+      }
       await this.listingRepository.save(listing, manager);
       await this.conversationThreadRepository.save(conversation, manager);
       await this.matchSessionRepository.save(match, manager);

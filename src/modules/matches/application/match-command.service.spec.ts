@@ -1,6 +1,7 @@
 import { MatchCommandService } from './match-command.service';
 import { MatchExpirationService } from './match-expiration.service';
 import { NotificationCommandService } from '../../notifications/application/notification-command.service';
+import { ReputationRecordingService } from '../../reputation/application/reputation-recording.service';
 import { MatchSurfaceBuilder } from '../read-models/match-surface.builder';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
 import { PurchaseIntentRepository } from '../../interactions/infrastructure/purchase-intent.repository';
@@ -157,6 +158,14 @@ describe('MatchCommandService', () => {
       notifyMatchCompletedMany,
       notifyNewConversationMessage,
     } as unknown as NotificationCommandService;
+    const recordCompleted = jest.fn().mockResolvedValue(undefined);
+    const recordFailed = jest.fn().mockResolvedValue(undefined);
+    const recordCancelled = jest.fn().mockResolvedValue(undefined);
+    const reputationRecordingService = {
+      recordCompleted,
+      recordFailed,
+      recordCancelled,
+    } as unknown as ReputationRecordingService;
 
     return {
       service: new MatchCommandService(
@@ -168,6 +177,7 @@ describe('MatchCommandService', () => {
         new MatchSurfaceBuilder(),
         listingRepository,
         notificationCommandService,
+        reputationRecordingService,
         purchaseIntentRepository,
         tradeProposalRepository,
         proposedListingCommitmentRepository,
@@ -180,6 +190,9 @@ describe('MatchCommandService', () => {
       releaseByMatchSessionId,
       notifyMatchCompletedMany,
       notifyNewConversationMessage,
+      recordCompleted,
+      recordFailed,
+      recordCancelled,
       conversationMessageRepository,
     };
   }
@@ -193,6 +206,7 @@ describe('MatchCommandService', () => {
       purchaseIntent,
       releaseByMatchSessionId,
       notifyMatchCompletedMany,
+      recordCompleted,
     } = createService();
 
     const response = await service.confirmSuccess('usr-owner', 'ms-1');
@@ -203,6 +217,13 @@ describe('MatchCommandService', () => {
     expect(purchaseIntent.state).toBe(PurchaseIntentState.CLOSED);
     expect(releaseByMatchSessionId).toHaveBeenCalledWith(
       'ms-1',
+      expect.any(Object),
+    );
+    expect(recordCompleted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'ms-1',
+        state: MatchSessionState.COMPLETED,
+      }),
       expect.any(Object),
     );
     expect(notifyMatchCompletedMany).toHaveBeenCalledWith(
@@ -222,6 +243,38 @@ describe('MatchCommandService', () => {
     );
     expect(response.matchSession.state).toBe(MatchSessionState.COMPLETED);
     expect(response.listingState).toBe(ListingState.CLOSED);
+  });
+
+  it('records failed reputation entries when a participant marks the match as failed', async () => {
+    const { service, recordFailed, match } = createService();
+
+    await service.markFailed('usr-owner', 'ms-1');
+
+    expect(match.state).toBe(MatchSessionState.FAILED);
+    expect(recordFailed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'ms-1',
+        state: MatchSessionState.FAILED,
+      }),
+      'usr-owner',
+      expect.any(Object),
+    );
+  });
+
+  it('records cancelled reputation entries when a participant cancels the match', async () => {
+    const { service, recordCancelled, match } = createService();
+
+    await service.cancel('usr-owner', 'ms-1');
+
+    expect(match.state).toBe(MatchSessionState.CANCELLED);
+    expect(recordCancelled).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'ms-1',
+        state: MatchSessionState.CANCELLED,
+      }),
+      'usr-owner',
+      expect.any(Object),
+    );
   });
 
   it('creates a new message notification for the counterparty', async () => {

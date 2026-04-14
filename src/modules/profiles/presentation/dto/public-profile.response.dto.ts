@@ -54,6 +54,9 @@ class PublicProfileTrustDto {
   @ApiProperty({ example: 1 })
   cancelledTransactions: number;
 
+  @ApiProperty({ example: 1 })
+  cancellations: number;
+
   @ApiProperty({ example: 0.88 })
   successRate: number;
 

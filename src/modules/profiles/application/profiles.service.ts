@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { NotFoundError } from '../../../common/errors/not-found.error';
+import { ReputationProfileSnapshotRepository } from '../../reputation/infrastructure/reputation-profile-snapshot.repository';
 import { UserEntity } from '../../auth/domain/user.entity';
 import { UserRepository } from '../../auth/infrastructure/user.repository';
 import { PublicProfileEntity } from '../domain/public-profile.entity';
@@ -8,7 +9,6 @@ import { ReputationProfileEntity } from '../domain/reputation-profile.entity';
 import { TrustProfileEntity } from '../domain/trust-profile.entity';
 import { PublicProfileRepository } from '../infrastructure/public-profile.repository';
 import { ReachZoneRepository } from '../infrastructure/reach-zone.repository';
-import { ReputationProfileRepository } from '../infrastructure/reputation-profile.repository';
 import { TrustProfileRepository } from '../infrastructure/trust-profile.repository';
 import {
   MyProfileResponseDto,
@@ -25,7 +25,7 @@ export class ProfilesService {
     private readonly publicProfileRepository: PublicProfileRepository,
     private readonly trustProfileRepository: TrustProfileRepository,
     private readonly reachZoneRepository: ReachZoneRepository,
-    private readonly reputationProfileRepository: ReputationProfileRepository,
+    private readonly reputationProfileRepository: ReputationProfileSnapshotRepository,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -151,6 +151,7 @@ export class ProfilesService {
         successfulTransactions: reputationProfile.successfulTransactionsCount,
         failedTransactions: reputationProfile.failedTransactionsCount,
         cancelledTransactions: reputationProfile.cancelledTransactionsCount,
+        cancellations: reputationProfile.cancelledTransactionsCount,
         successRate: Number(reputationProfile.successRate),
         avgResponseTimeHours:
           reputationProfile.avgResponseTimeHours !== null

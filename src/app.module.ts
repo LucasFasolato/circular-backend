@@ -14,6 +14,7 @@ import { DiscoveryModule } from './modules/discovery/discovery.module';
 import { InteractionsModule } from './modules/interactions/interactions.module';
 import { MatchesModule } from './modules/matches/matches.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ReputationModule } from './modules/reputation/reputation.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     HealthModule,
     AuthModule,
     ProfilesModule,
+    ReputationModule,
     ListingsModule,
     DiscoveryModule,
     NotificationsModule,
