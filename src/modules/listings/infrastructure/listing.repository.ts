@@ -37,6 +37,15 @@ export class ListingRepository {
     return repo.save(listing);
   }
 
+  async updateDominantPhotoId(
+    listingId: string,
+    dominantPhotoId: string,
+    manager?: EntityManager,
+  ): Promise<void> {
+    const repo = manager ? manager.getRepository(ListingEntity) : this.repo;
+    await repo.update({ id: listingId }, { dominantPhotoId });
+  }
+
   async findById(listingId: string): Promise<ListingEntity | null> {
     return this.findByIdWithManager(listingId);
   }

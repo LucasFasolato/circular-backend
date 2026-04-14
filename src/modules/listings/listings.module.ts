@@ -15,6 +15,7 @@ import { ListingTradePreferenceEntity } from './domain/listing-trade-preference.
 import { SavedListingEntity } from './domain/saved-listing.entity';
 import { GarmentRepository } from './infrastructure/garment.repository';
 import { ListingPhotoRepository } from './infrastructure/listing-photo.repository';
+import { ListingAvailabilityReadRepository } from './infrastructure/listing-availability-read.repository';
 import { ListingRepository } from './infrastructure/listing.repository';
 import { ListingTradePreferenceRepository } from './infrastructure/listing-trade-preference.repository';
 import { LocalListingPhotoStorageService } from './infrastructure/local-listing-photo-storage.service';
@@ -44,6 +45,7 @@ import { ListingsController } from './presentation/listings.controller';
     GarmentRepository,
     ListingRepository,
     ListingPhotoRepository,
+    ListingAvailabilityReadRepository,
     ListingTradePreferenceRepository,
     SavedListingRepository,
     PublicProfileReadRepository,

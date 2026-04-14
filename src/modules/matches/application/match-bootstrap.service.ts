@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { ConversationThreadState } from '../domain/conversation-thread-state.enum';
-import { MatchType } from '../domain/match-type.enum';
-import { MatchSessionState } from '../domain/match-session-state.enum';
 import { MATCH_LIMITS } from '../domain/match-limits.constants';
+import { MatchSessionState } from '../domain/match-session-state.enum';
+import { MatchType } from '../domain/match-type.enum';
 import { ConversationThreadRepository } from '../infrastructure/conversation-thread.repository';
 import { MatchSessionRepository } from '../infrastructure/match-session.repository';
 

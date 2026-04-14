@@ -8,6 +8,8 @@ import {
 } from '../../listings/domain/listing-errors';
 import { ListingState } from '../../listings/domain/listing-state.enum';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
+import { MatchBootstrapService } from '../../matches/application/match-bootstrap.service';
+import { MatchSessionRepository } from '../../matches/infrastructure/match-session.repository';
 import { InteractionType } from '../domain/interaction-type.enum';
 import {
   interactionNotActiveError,
@@ -15,7 +17,6 @@ import {
 } from '../domain/interaction-errors';
 import { ProposedListingCommitmentState } from '../domain/proposed-listing-commitment-state.enum';
 import { TradeProposalState } from '../domain/trade-proposal-state.enum';
-import { MatchSessionRepository } from '../infrastructure/match-session.repository';
 import { ProposedListingCommitmentRepository } from '../infrastructure/proposed-listing-commitment.repository';
 import { TradeProposalItemRepository } from '../infrastructure/trade-proposal-item.repository';
 import { TradeProposalRepository } from '../infrastructure/trade-proposal.repository';
@@ -26,7 +27,6 @@ import {
   assertListingIsPublishedForInteractions,
   assertProposedListingIsAvailable,
 } from './interaction-listing.policy';
-import { MatchBootstrapService } from './match-bootstrap.service';
 
 @Injectable()
 export class AcceptTradeProposalService {
@@ -77,7 +77,16 @@ export class AcceptTradeProposalService {
         throw listingNotFoundError();
       }
 
-      assertListingIsPublishedForInteractions(targetListing);
+      const targetHasCommitment =
+        await this.proposedListingCommitmentRepository.hasActiveCommitments(
+          [targetListing.id],
+          manager,
+        );
+
+      assertListingIsPublishedForInteractions(targetListing, {
+        hasActiveMatch: false,
+        isCommittedProposedItem: targetHasCommitment,
+      });
 
       const activeMatch =
         await this.matchSessionRepository.findActiveByListingId(
@@ -104,18 +113,30 @@ export class AcceptTradeProposalService {
         throw listingNotFoundError();
       }
 
-      proposedListings.forEach((listing) =>
-        assertProposedListingIsAvailable(listing, tradeProposal.proposerUserId),
-      );
-
-      const hasCommitments =
-        await this.proposedListingCommitmentRepository.hasActiveCommitments(
+      const [proposedHasActiveMatch, hasCommitments] = await Promise.all([
+        this.matchSessionRepository.hasActiveByListingIds(
           proposedListingIds,
           manager,
-        );
+        ),
+        this.proposedListingCommitmentRepository.hasActiveCommitments(
+          proposedListingIds,
+          manager,
+        ),
+      ]);
       if (hasCommitments) {
         throw proposedItemAlreadyCommittedError();
       }
+
+      proposedListings.forEach((listing) =>
+        assertProposedListingIsAvailable(
+          listing,
+          tradeProposal.proposerUserId,
+          {
+            hasActiveMatch: proposedHasActiveMatch,
+            isCommittedProposedItem: hasCommitments,
+          },
+        ),
+      );
 
       const match = await this.matchBootstrapService.createTradeMatch(
         {
@@ -154,6 +175,15 @@ export class AcceptTradeProposalService {
         ownerUserId,
         manager,
       );
+      for (const proposedListingId of proposedListingIds) {
+        await this.interactionConflictResolutionService.expireCompetingInteractionsForListing(
+          proposedListingId,
+          tradeProposal.id,
+          'TRADE_PROPOSAL',
+          ownerUserId,
+          manager,
+        );
+      }
       await this.interactionConflictResolutionService.expireTradeProposalsUsingUnavailableProposedItems(
         [...proposedListingIds, targetListing.id],
         tradeProposal.id,

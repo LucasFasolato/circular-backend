@@ -1,5 +1,6 @@
 import { ListingEntity } from '../../listings/domain/listing.entity';
 import { ListingState } from '../../listings/domain/listing-state.enum';
+import { ListingAvailabilityPolicy } from '../../listings/application/listing-availability.policy';
 import {
   listingAlreadyClosedError,
   listingAlreadyReservedError,
@@ -15,20 +16,40 @@ import {
 export function assertListingCanReceiveInteraction(
   listing: ListingEntity,
   actorUserId: string,
+  input: {
+    hasActiveMatch?: boolean;
+    isCommittedProposedItem?: boolean;
+  } = {},
 ): void {
   if (listing.ownerUserId === actorUserId) {
     throw selfInteractionNotAllowedError();
   }
 
-  assertListingIsPublishedForInteractions(listing);
+  assertListingIsPublishedForInteractions(listing, input);
 }
 
 export function assertListingIsPublishedForInteractions(
   listing: ListingEntity,
+  input: {
+    hasActiveMatch?: boolean;
+    isCommittedProposedItem?: boolean;
+  } = {},
 ): void {
   const state = listing.state as ListingState;
 
-  if (state === ListingState.PUBLISHED && listing.archivedAt === null) {
+  if (
+    ListingAvailabilityPolicy.canReceiveInteractions({
+      ownerUserId: listing.ownerUserId,
+      state,
+      archivedAt: listing.archivedAt,
+      reservationExpiresAt: listing.reservationExpiresAt,
+      allowsPurchase: listing.allowsPurchase,
+      allowsTrade: listing.allowsTrade,
+      viewerUserId: 'viewer',
+      hasActiveMatch: input.hasActiveMatch,
+      isCommittedProposedItem: input.isCommittedProposedItem,
+    })
+  ) {
     return;
   }
 
@@ -50,13 +71,29 @@ export function assertListingIsPublishedForInteractions(
 export function assertProposedListingIsAvailable(
   listing: ListingEntity,
   proposerUserId: string,
+  input: {
+    hasActiveMatch?: boolean;
+    isCommittedProposedItem?: boolean;
+  } = {},
 ): void {
   if (listing.ownerUserId !== proposerUserId) {
     throw proposedItemNotOwnedError();
   }
 
   const state = listing.state as ListingState;
-  if (state !== ListingState.PUBLISHED || listing.archivedAt !== null) {
+  if (
+    !ListingAvailabilityPolicy.canReceiveInteractions({
+      ownerUserId: listing.ownerUserId,
+      state,
+      archivedAt: listing.archivedAt,
+      reservationExpiresAt: listing.reservationExpiresAt,
+      allowsPurchase: listing.allowsPurchase,
+      allowsTrade: listing.allowsTrade,
+      viewerUserId: proposerUserId,
+      hasActiveMatch: input.hasActiveMatch,
+      isCommittedProposedItem: input.isCommittedProposedItem,
+    })
+  ) {
     throw proposedItemNotAvailableError();
   }
 }

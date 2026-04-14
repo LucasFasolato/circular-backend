@@ -37,6 +37,7 @@ export interface SavedListingsQuery {
 
 export interface DiscoveryListingSnapshot {
   id: string;
+  ownerUserId: string;
   state: string;
   category: string;
   subcategory: string | null;
@@ -52,6 +53,10 @@ export interface DiscoveryListingSnapshot {
   publishedAt: string;
   isSaved: boolean;
   isDismissed: boolean;
+  hasActivePurchaseIntent: boolean;
+  hasActiveTradeProposal: boolean;
+  hasActiveMatch: boolean;
+  isCommittedProposedItem: boolean;
 }
 
 export interface SavedDiscoveryListingSnapshot extends DiscoveryListingSnapshot {
@@ -61,6 +66,7 @@ export interface SavedDiscoveryListingSnapshot extends DiscoveryListingSnapshot 
 
 interface DiscoveryFeedRow {
   listing_id: string;
+  listing_owner_user_id: string;
   listing_state: string;
   garment_category: string;
   garment_subcategory: string | null;
@@ -76,6 +82,10 @@ interface DiscoveryFeedRow {
   listing_published_at: Date;
   is_saved: boolean;
   is_dismissed: boolean;
+  has_active_purchase_intent: boolean;
+  has_active_trade_proposal: boolean;
+  has_active_match: boolean;
+  is_committed_proposed_item: boolean;
 }
 
 interface SavedDiscoveryFeedRow extends DiscoveryFeedRow {
@@ -113,6 +123,7 @@ export class DiscoveryFeedRepository {
       )
       .leftJoin('listing.photos', 'photo')
       .select('listing.id', 'listing_id')
+      .addSelect('listing.owner_user_id', 'listing_owner_user_id')
       .addSelect('listing.state', 'listing_state')
       .addSelect('garment.category', 'garment_category')
       .addSelect('garment.subcategory', 'garment_subcategory')
@@ -137,6 +148,52 @@ export class DiscoveryFeedRepository {
         'CASE WHEN dismissal.id IS NULL THEN FALSE ELSE TRUE END',
         'is_dismissed',
       )
+      .addSelect(
+        `
+          CASE WHEN EXISTS (
+            SELECT 1
+            FROM "purchase_intents" pi
+            WHERE pi."listing_id" = listing.id
+              AND pi."buyer_user_id" = :viewerUserId
+              AND pi."state" = 'ACTIVE'
+          ) THEN TRUE ELSE FALSE END
+        `,
+        'has_active_purchase_intent',
+      )
+      .addSelect(
+        `
+          CASE WHEN EXISTS (
+            SELECT 1
+            FROM "trade_proposals" tp
+            WHERE tp."target_listing_id" = listing.id
+              AND tp."proposer_user_id" = :viewerUserId
+              AND tp."state" = 'ACTIVE'
+          ) THEN TRUE ELSE FALSE END
+        `,
+        'has_active_trade_proposal',
+      )
+      .addSelect(
+        `
+          CASE WHEN EXISTS (
+            SELECT 1
+            FROM "match_sessions" ms
+            WHERE ms."listing_id" = listing.id
+              AND ms."state" IN ('OPEN', 'ACTIVE')
+          ) THEN TRUE ELSE FALSE END
+        `,
+        'has_active_match',
+      )
+      .addSelect(
+        `
+          CASE WHEN EXISTS (
+            SELECT 1
+            FROM "proposed_listing_commitments" plc
+            WHERE plc."proposed_listing_id" = listing.id
+              AND plc."state" IN ('RESERVED_FOR_PROPOSAL', 'COMMITTED_TO_MATCH')
+          ) THEN TRUE ELSE FALSE END
+        `,
+        'is_committed_proposed_item',
+      )
       .setParameter('goodStatuses', [
         ImageAuditStatus.APPROVED,
         ImageAuditStatus.PENDING,
@@ -150,6 +207,16 @@ export class DiscoveryFeedRepository {
         viewerUserId: query.viewerUserId,
       })
       .andWhere('dismissal.id IS NULL')
+      .andWhere(
+        `
+          NOT EXISTS (
+            SELECT 1
+            FROM "proposed_listing_commitments" plc
+            WHERE plc."proposed_listing_id" = listing.id
+              AND plc."state" IN ('RESERVED_FOR_PROPOSAL', 'COMMITTED_TO_MATCH')
+          )
+        `,
+      )
       .groupBy('listing.id')
       .addGroupBy('listing.state')
       .addGroupBy('garment.category')
@@ -196,6 +263,7 @@ export class DiscoveryFeedRepository {
       )
       .leftJoin('listing.photos', 'photo')
       .select('listing.id', 'listing_id')
+      .addSelect('listing.owner_user_id', 'listing_owner_user_id')
       .addSelect('listing.state', 'listing_state')
       .addSelect('garment.category', 'garment_category')
       .addSelect('garment.subcategory', 'garment_subcategory')
@@ -219,6 +287,30 @@ export class DiscoveryFeedRepository {
         'CASE WHEN dismissal.id IS NULL THEN FALSE ELSE TRUE END',
         'is_dismissed',
       )
+      .addSelect('FALSE', 'has_active_purchase_intent')
+      .addSelect('FALSE', 'has_active_trade_proposal')
+      .addSelect(
+        `
+          CASE WHEN EXISTS (
+            SELECT 1
+            FROM "match_sessions" ms
+            WHERE ms."listing_id" = listing.id
+              AND ms."state" IN ('OPEN', 'ACTIVE')
+          ) THEN TRUE ELSE FALSE END
+        `,
+        'has_active_match',
+      )
+      .addSelect(
+        `
+          CASE WHEN EXISTS (
+            SELECT 1
+            FROM "proposed_listing_commitments" plc
+            WHERE plc."proposed_listing_id" = listing.id
+              AND plc."state" IN ('RESERVED_FOR_PROPOSAL', 'COMMITTED_TO_MATCH')
+          ) THEN TRUE ELSE FALSE END
+        `,
+        'is_committed_proposed_item',
+      )
       .setParameter('goodStatuses', [
         ImageAuditStatus.APPROVED,
         ImageAuditStatus.PENDING,
@@ -234,6 +326,16 @@ export class DiscoveryFeedRepository {
       .andWhere('listing.owner_user_id <> :viewerUserId', {
         viewerUserId: query.viewerUserId,
       })
+      .andWhere(
+        `
+          NOT EXISTS (
+            SELECT 1
+            FROM "proposed_listing_commitments" plc
+            WHERE plc."proposed_listing_id" = listing.id
+              AND plc."state" IN ('RESERVED_FOR_PROPOSAL', 'COMMITTED_TO_MATCH')
+          )
+        `,
+      )
       .groupBy('listing.id')
       .addGroupBy('listing.state')
       .addGroupBy('garment.category')
@@ -356,6 +458,7 @@ export class DiscoveryFeedRepository {
   private mapDiscoveryRow(row: DiscoveryFeedRow): DiscoveryListingSnapshot {
     return {
       id: row.listing_id,
+      ownerUserId: row.listing_owner_user_id,
       state: row.listing_state,
       category: row.garment_category,
       subcategory: row.garment_subcategory,
@@ -379,6 +482,10 @@ export class DiscoveryFeedRepository {
       publishedAt: row.listing_published_at.toISOString(),
       isSaved: this.toBoolean(row.is_saved),
       isDismissed: this.toBoolean(row.is_dismissed),
+      hasActivePurchaseIntent: this.toBoolean(row.has_active_purchase_intent),
+      hasActiveTradeProposal: this.toBoolean(row.has_active_trade_proposal),
+      hasActiveMatch: this.toBoolean(row.has_active_match),
+      isCommittedProposedItem: this.toBoolean(row.is_committed_proposed_item),
     };
   }
 

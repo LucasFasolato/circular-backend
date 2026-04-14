@@ -8,16 +8,17 @@ import {
 } from '../../listings/domain/listing-errors';
 import { ListingState } from '../../listings/domain/listing-state.enum';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
+import { MatchBootstrapService } from '../../matches/application/match-bootstrap.service';
+import { MatchSessionRepository } from '../../matches/infrastructure/match-session.repository';
 import { InteractionType } from '../domain/interaction-type.enum';
 import { interactionNotActiveError } from '../domain/interaction-errors';
 import { PurchaseIntentState } from '../domain/purchase-intent-state.enum';
-import { MatchSessionRepository } from '../infrastructure/match-session.repository';
+import { ProposedListingCommitmentRepository } from '../infrastructure/proposed-listing-commitment.repository';
 import { PurchaseIntentRepository } from '../infrastructure/purchase-intent.repository';
 import { InteractionResolutionResponseDto } from '../presentation/dto/interaction-response.dto';
 import { InteractionConflictResolutionService } from './interaction-conflict-resolution.service';
 import { InteractionResponseFactory } from './interaction-response.factory';
 import { assertListingIsPublishedForInteractions } from './interaction-listing.policy';
-import { MatchBootstrapService } from './match-bootstrap.service';
 
 @Injectable()
 export class AcceptPurchaseIntentService {
@@ -26,6 +27,7 @@ export class AcceptPurchaseIntentService {
     private readonly purchaseIntentRepository: PurchaseIntentRepository,
     private readonly listingRepository: ListingRepository,
     private readonly matchSessionRepository: MatchSessionRepository,
+    private readonly proposedListingCommitmentRepository: ProposedListingCommitmentRepository,
     private readonly interactionConflictResolutionService: InteractionConflictResolutionService,
     private readonly matchBootstrapService: MatchBootstrapService,
     private readonly interactionResponseFactory: InteractionResponseFactory,
@@ -66,7 +68,16 @@ export class AcceptPurchaseIntentService {
         throw listingNotFoundError();
       }
 
-      assertListingIsPublishedForInteractions(listing);
+      const targetHasCommitment =
+        await this.proposedListingCommitmentRepository.hasActiveCommitments(
+          [listing.id],
+          manager,
+        );
+
+      assertListingIsPublishedForInteractions(listing, {
+        hasActiveMatch: false,
+        isCommittedProposedItem: targetHasCommitment,
+      });
 
       const activeMatch =
         await this.matchSessionRepository.findActiveByListingId(

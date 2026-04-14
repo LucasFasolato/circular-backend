@@ -1,25 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PublicProfileReadRepository } from '../infrastructure/public-profile-read.repository';
 import { SavedListingRepository } from '../infrastructure/saved-listing.repository';
+import { ListingAvailabilityReadRepository } from '../infrastructure/listing-availability-read.repository';
 import { ListingEntity } from '../domain/listing.entity';
 import { ListingDetailResponseDto } from '../presentation/dto/listing-response.dto';
-import {
-  canArchiveListing,
-  canEditListing,
-  canPauseListing,
-  canResumeListing,
-  canSubmitListingForReview,
-} from '../domain/listing-state.policy';
 import { ListingState } from '../domain/listing-state.enum';
-import { LISTING_LIMITS } from '../domain/listing-limits.constants';
 import { ImageAuditStatus } from '../domain/image-audit-status.enum';
 import { deriveQualityLabels } from '../domain/listing-quality-label.policy';
+import { ListingAvailabilityPolicy } from './listing-availability.policy';
 
 @Injectable()
 export class ListingSurfaceService {
   constructor(
     private readonly publicProfileReadRepository: PublicProfileReadRepository,
     private readonly savedListingRepository: SavedListingRepository,
+    private readonly listingAvailabilityReadRepository: ListingAvailabilityReadRepository,
   ) {}
 
   async buildDetail(
@@ -30,12 +25,36 @@ export class ListingSurfaceService {
       listing.ownerUserId,
     );
     const isOwner = viewerUserId === listing.ownerUserId;
-    const isSaved =
+    const [isSaved, availabilitySignals] = await Promise.all([
       !isOwner && viewerUserId
-        ? await this.savedListingRepository.exists(viewerUserId, listing.id)
-        : false;
+        ? this.savedListingRepository.exists(viewerUserId, listing.id)
+        : Promise.resolve(false),
+      this.listingAvailabilityReadRepository.getSignals(
+        listing.id,
+        viewerUserId,
+      ),
+    ]);
     const photoCount = listing.photos.length;
     const listingState = listing.state as ListingState;
+    const availabilityContext = {
+      ownerUserId: listing.ownerUserId,
+      state: listingState,
+      archivedAt: listing.archivedAt,
+      reservationExpiresAt: listing.reservationExpiresAt,
+      allowsPurchase: listing.allowsPurchase,
+      allowsTrade: listing.allowsTrade,
+      viewerUserId,
+      isSaved,
+      hasActivePurchaseIntent: availabilitySignals.hasActivePurchaseIntent,
+      hasActiveTradeProposal: availabilitySignals.hasActiveTradeProposal,
+      hasActiveMatch: availabilitySignals.hasActiveMatch,
+      isCommittedProposedItem: availabilitySignals.isCommittedProposedItem,
+      photoCount,
+    };
+    const viewerContext =
+      ListingAvailabilityPolicy.deriveViewerContext(availabilityContext);
+    const availableActions =
+      ListingAvailabilityPolicy.deriveAvailableActions(availabilityContext);
 
     return {
       listing: {
@@ -96,45 +115,8 @@ export class ListingSurfaceService {
           listing.reservationExpiresAt?.toISOString() ?? null,
         archivedAt: listing.archivedAt?.toISOString() ?? null,
       },
-      viewerContext: {
-        isOwner,
-        isSaved,
-        hasActivePurchaseIntent: false,
-        hasActiveTradeProposal: false,
-      },
-      availableActions: {
-        canUploadPhotos:
-          isOwner &&
-          canEditListing(listingState) &&
-          photoCount < LISTING_LIMITS.MAX_PHOTOS_PER_LISTING,
-        canSubmitForReview:
-          isOwner &&
-          canSubmitListingForReview(listingState) &&
-          photoCount >= LISTING_LIMITS.MIN_PHOTOS_TO_SUBMIT,
-        canEdit: isOwner && canEditListing(listingState),
-        canArchive: isOwner && canArchiveListing(listingState),
-        canPause: isOwner && canPauseListing(listingState),
-        canResume: isOwner && canResumeListing(listingState),
-        canBuy:
-          !isOwner &&
-          listingState === ListingState.PUBLISHED &&
-          listing.allowsPurchase,
-        canTrade:
-          !isOwner &&
-          listingState === ListingState.PUBLISHED &&
-          listing.allowsTrade,
-        canSave:
-          !isOwner &&
-          !!viewerUserId &&
-          listingState === ListingState.PUBLISHED &&
-          !isSaved,
-        canUnsave:
-          !isOwner &&
-          !!viewerUserId &&
-          listingState === ListingState.PUBLISHED &&
-          isSaved,
-        canRenewReservation: false,
-      },
+      viewerContext,
+      availableActions,
     };
   }
 

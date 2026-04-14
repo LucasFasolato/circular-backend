@@ -4,11 +4,13 @@ import {
   Entity,
   Index,
   JoinColumn,
+  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { MatchSessionEntity } from './match-session.entity';
+import { ConversationMessageEntity } from './conversation-message.entity';
 
 @Entity('conversation_threads')
 @Index('uq_conversation_threads_match_session_id', ['matchSessionId'], {
@@ -42,6 +44,9 @@ export class ConversationThreadEntity {
 
   @Column({ type: 'timestamptz', name: 'archived_at', nullable: true })
   archivedAt: Date | null;
+
+  @OneToMany(() => ConversationMessageEntity, (message) => message.conversation)
+  messages: ConversationMessageEntity[];
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt: Date;

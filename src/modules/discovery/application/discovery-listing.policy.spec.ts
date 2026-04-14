@@ -32,6 +32,8 @@ describe('discovery-listing.policy', () => {
   it('builds actions for a published unsaved listing', () => {
     expect(
       buildDiscoveryAvailableActions({
+        viewerUserId: 'usr-viewer',
+        ownerUserId: 'usr-owner',
         isOwner: false,
         isSaved: false,
         isDismissed: false,
@@ -52,6 +54,8 @@ describe('discovery-listing.policy', () => {
   it('disables buyer actions for owners, dismissed items and non-published listings', () => {
     expect(
       buildDiscoveryAvailableActions({
+        viewerUserId: 'usr-owner',
+        ownerUserId: 'usr-owner',
         isOwner: true,
         isSaved: false,
         isDismissed: false,
@@ -70,6 +74,8 @@ describe('discovery-listing.policy', () => {
 
     expect(
       buildDiscoveryAvailableActions({
+        viewerUserId: 'usr-viewer',
+        ownerUserId: 'usr-owner',
         isOwner: false,
         isSaved: true,
         isDismissed: true,
@@ -88,6 +94,8 @@ describe('discovery-listing.policy', () => {
 
     expect(
       buildDiscoveryAvailableActions({
+        viewerUserId: 'usr-viewer',
+        ownerUserId: 'usr-owner',
         isOwner: false,
         isSaved: false,
         isDismissed: false,

@@ -1,12 +1,13 @@
 import { AcceptPurchaseIntentService } from './accept-purchase-intent.service';
 import { PurchaseIntentRepository } from '../infrastructure/purchase-intent.repository';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
-import { MatchSessionRepository } from '../infrastructure/match-session.repository';
+import { MatchSessionRepository } from '../../matches/infrastructure/match-session.repository';
 import { InteractionConflictResolutionService } from './interaction-conflict-resolution.service';
-import { MatchBootstrapService } from './match-bootstrap.service';
+import { MatchBootstrapService } from '../../matches/application/match-bootstrap.service';
 import { InteractionResponseFactory } from './interaction-response.factory';
 import { ListingState } from '../../listings/domain/listing-state.enum';
 import { PurchaseIntentState } from '../domain/purchase-intent-state.enum';
+import { ProposedListingCommitmentRepository } from '../infrastructure/proposed-listing-commitment.repository';
 
 describe('AcceptPurchaseIntentService', () => {
   function createService() {
@@ -52,6 +53,9 @@ describe('AcceptPurchaseIntentService', () => {
     const matchSessionRepository = {
       findActiveByListingId,
     } as unknown as MatchSessionRepository;
+    const commitmentRepository = {
+      hasActiveCommitments: jest.fn().mockResolvedValue(false),
+    } as unknown as ProposedListingCommitmentRepository;
     const conflictResolution = {
       expireCompetingInteractionsForListing,
     } as unknown as InteractionConflictResolutionService;
@@ -65,6 +69,7 @@ describe('AcceptPurchaseIntentService', () => {
         purchaseIntentRepository,
         listingRepository,
         matchSessionRepository,
+        commitmentRepository,
         conflictResolution,
         matchBootstrap,
         new InteractionResponseFactory(),

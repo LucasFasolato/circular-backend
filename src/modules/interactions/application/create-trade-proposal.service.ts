@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import { ValidationAppError } from '../../../common/errors/validation-app.error';
 import { listingNotFoundError } from '../../listings/domain/listing-errors';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
+import { MatchSessionRepository } from '../../matches/infrastructure/match-session.repository';
 import { INTERACTION_LIMITS } from '../domain/interaction-limits.constants';
 import {
   proposedItemAlreadyCommittedError,
@@ -29,6 +30,7 @@ export class CreateTradeProposalService {
     private readonly tradeProposalRepository: TradeProposalRepository,
     private readonly tradeProposalItemRepository: TradeProposalItemRepository,
     private readonly proposedListingCommitmentRepository: ProposedListingCommitmentRepository,
+    private readonly matchSessionRepository: MatchSessionRepository,
     private readonly interactionResponseFactory: InteractionResponseFactory,
   ) {}
 
@@ -37,15 +39,6 @@ export class CreateTradeProposalService {
     targetListingId: string,
     dto: CreateTradeProposalDto,
   ): Promise<TradeProposalMutationResponseDto> {
-    const targetListing =
-      await this.listingRepository.findById(targetListingId);
-
-    if (!targetListing) {
-      throw listingNotFoundError();
-    }
-
-    assertListingCanReceiveInteraction(targetListing, proposerUserId);
-
     const activeCount =
       await this.tradeProposalRepository.countActiveByProposerUserId(
         proposerUserId,
@@ -60,27 +53,63 @@ export class CreateTradeProposalService {
     }
 
     return this.dataSource.transaction(async (manager) => {
-      const proposedListings = await this.listingRepository.findManyByIds(
-        dto.proposedListingIds,
+      const targetListing = await this.listingRepository.findByIdForUpdate(
+        targetListingId,
         manager,
       );
+
+      if (!targetListing) {
+        throw listingNotFoundError();
+      }
+
+      const [targetHasActiveMatch, targetHasCommitment] = await Promise.all([
+        this.matchSessionRepository.hasActiveByListingIds(
+          [targetListingId],
+          manager,
+        ),
+        this.proposedListingCommitmentRepository.hasActiveCommitments(
+          [targetListingId],
+          manager,
+        ),
+      ]);
+
+      assertListingCanReceiveInteraction(targetListing, proposerUserId, {
+        hasActiveMatch: targetHasActiveMatch,
+        isCommittedProposedItem: targetHasCommitment,
+      });
+
+      const proposedListings =
+        await this.listingRepository.findManyByIdsForUpdate(
+          dto.proposedListingIds,
+          manager,
+        );
 
       if (proposedListings.length !== dto.proposedListingIds.length) {
         throw listingNotFoundError();
       }
 
-      proposedListings.forEach((listing) =>
-        assertProposedListingIsAvailable(listing, proposerUserId),
-      );
+      const [proposedHasActiveMatch, proposedHasCommitments] =
+        await Promise.all([
+          this.matchSessionRepository.hasActiveByListingIds(
+            dto.proposedListingIds,
+            manager,
+          ),
+          this.proposedListingCommitmentRepository.hasActiveCommitments(
+            dto.proposedListingIds,
+            manager,
+          ),
+        ]);
 
-      const hasCommitments =
-        await this.proposedListingCommitmentRepository.hasActiveCommitments(
-          dto.proposedListingIds,
-          manager,
-        );
-      if (hasCommitments) {
+      if (proposedHasCommitments) {
         throw proposedItemAlreadyCommittedError();
       }
+
+      proposedListings.forEach((listing) =>
+        assertProposedListingIsAvailable(listing, proposerUserId, {
+          hasActiveMatch: proposedHasActiveMatch,
+          isCommittedProposedItem: proposedHasCommitments,
+        }),
+      );
 
       try {
         const tradeProposal = await this.tradeProposalRepository.create(

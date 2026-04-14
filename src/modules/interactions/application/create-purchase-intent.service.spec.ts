@@ -1,5 +1,7 @@
 import { CreatePurchaseIntentService } from './create-purchase-intent.service';
+import { MatchSessionRepository } from '../../matches/infrastructure/match-session.repository';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
+import { ProposedListingCommitmentRepository } from '../infrastructure/proposed-listing-commitment.repository';
 import { PurchaseIntentRepository } from '../infrastructure/purchase-intent.repository';
 import { InteractionResponseFactory } from './interaction-response.factory';
 import { ListingState } from '../../listings/domain/listing-state.enum';
@@ -16,13 +18,14 @@ describe('CreatePurchaseIntentService', () => {
     listing?: Record<string, unknown>;
     activeCount?: number;
   }) {
+    const transaction = jest.fn((cb: (manager: object) => unknown) => cb({}));
     const createPurchaseIntent = jest.fn().mockResolvedValue({
       id: 'pi-1',
       listingId: 'lst-1',
       createdAt: new Date('2026-04-13T12:00:00.000Z'),
     });
     const listingRepository = {
-      findById: jest.fn().mockResolvedValue({
+      findByIdForUpdate: jest.fn().mockResolvedValue({
         ...publishedListing,
         ...(overrides?.listing ?? {}),
       }),
@@ -33,12 +36,21 @@ describe('CreatePurchaseIntentService', () => {
         .mockResolvedValue(overrides?.activeCount ?? 0),
       create: createPurchaseIntent,
     } as unknown as PurchaseIntentRepository;
+    const commitmentRepository = {
+      hasActiveCommitments: jest.fn().mockResolvedValue(false),
+    } as unknown as ProposedListingCommitmentRepository;
+    const matchSessionRepository = {
+      hasActiveByListingIds: jest.fn().mockResolvedValue(false),
+    } as unknown as MatchSessionRepository;
     const responseFactory = new InteractionResponseFactory();
 
     return {
       service: new CreatePurchaseIntentService(
+        { transaction } as never,
         listingRepository,
         purchaseIntentRepository,
+        commitmentRepository,
+        matchSessionRepository,
         responseFactory,
       ),
       listingRepository,
@@ -60,6 +72,7 @@ describe('CreatePurchaseIntentService', () => {
         state: 'ACTIVE',
         source: 'LISTING_DETAIL',
       }),
+      expect.any(Object),
     );
     expect(result.purchaseIntent.state).toBe('ACTIVE');
     expect(result.availableActions.canCancel).toBe(true);

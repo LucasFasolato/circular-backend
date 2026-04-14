@@ -1,4 +1,5 @@
 import { SavedListingsService } from './saved-listings.service';
+import { ListingAvailabilityReadRepository } from '../../listings/infrastructure/listing-availability-read.repository';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
 import { SavedListingRepository } from '../../listings/infrastructure/saved-listing.repository';
 import { FeedDismissalRepository } from '../infrastructure/feed-dismissal.repository';
@@ -23,6 +24,7 @@ describe('SavedListingsService', () => {
     const findSavedPage = jest.fn().mockResolvedValue([
       {
         id: 'lst-1',
+        ownerUserId: 'usr-owner',
         state: ListingState.PUBLISHED,
         category: 'TOPS',
         subcategory: 'HOODIE',
@@ -49,6 +51,15 @@ describe('SavedListingsService', () => {
       createIfMissing,
       remove,
     } as unknown as SavedListingRepository;
+    const listingAvailabilityReadRepository = {
+      getSignals: jest.fn().mockResolvedValue({
+        isSaved: false,
+        hasActivePurchaseIntent: false,
+        hasActiveTradeProposal: false,
+        hasActiveMatch: false,
+        isCommittedProposedItem: false,
+      }),
+    } as unknown as ListingAvailabilityReadRepository;
     const feedDismissalRepository = {
       exists,
     } as unknown as FeedDismissalRepository;
@@ -60,6 +71,7 @@ describe('SavedListingsService', () => {
     return {
       service: new SavedListingsService(
         listingRepository,
+        listingAvailabilityReadRepository,
         savedListingRepository,
         feedDismissalRepository,
         discoveryFeedRepository,

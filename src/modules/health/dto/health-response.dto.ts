@@ -13,6 +13,20 @@ export class HealthResponseDto {
   @ApiProperty({ example: '0.1.0' })
   version: string;
 
+  @ApiProperty({ example: 'abc1234' })
+  commitSha: string;
+
   @ApiProperty({ example: 'development' })
   environment: string;
+
+  @ApiProperty({
+    example: {
+      status: 'up',
+      latencyMs: 5,
+    },
+  })
+  database: {
+    status: 'up' | 'down';
+    latencyMs: number | null;
+  };
 }

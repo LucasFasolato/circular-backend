@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
+import { MatchesModule } from '../matches/matches.module';
 import { UserEntity } from '../auth/domain/user.entity';
 import { PublicProfileEntity } from '../profiles/domain/public-profile.entity';
 import { ReputationProfileEntity } from '../profiles/domain/reputation-profile.entity';
@@ -17,18 +18,13 @@ import { CreateTradeProposalService } from './application/create-trade-proposal.
 import { IncomingInteractionsQueryService } from './application/incoming-interactions-query.service';
 import { InteractionConflictResolutionService } from './application/interaction-conflict-resolution.service';
 import { InteractionResponseFactory } from './application/interaction-response.factory';
-import { MatchBootstrapService } from './application/match-bootstrap.service';
 import { RejectPurchaseIntentService } from './application/reject-purchase-intent.service';
 import { RejectTradeProposalService } from './application/reject-trade-proposal.service';
-import { ConversationThreadEntity } from './domain/conversation-thread.entity';
-import { MatchSessionEntity } from './domain/match-session.entity';
 import { ProposedListingCommitmentEntity } from './domain/proposed-listing-commitment.entity';
 import { PurchaseIntentEntity } from './domain/purchase-intent.entity';
 import { TradeProposalEntity } from './domain/trade-proposal.entity';
 import { TradeProposalItemEntity } from './domain/trade-proposal-item.entity';
-import { ConversationThreadRepository } from './infrastructure/conversation-thread.repository';
 import { IncomingInteractionsReadRepository } from './infrastructure/incoming-interactions-read.repository';
-import { MatchSessionRepository } from './infrastructure/match-session.repository';
 import { ProposedListingCommitmentRepository } from './infrastructure/proposed-listing-commitment.repository';
 import { PurchaseIntentRepository } from './infrastructure/purchase-intent.repository';
 import { TradeProposalItemRepository } from './infrastructure/trade-proposal-item.repository';
@@ -39,6 +35,7 @@ import { IncomingInteractionItemBuilder } from './read-models/incoming-interacti
 @Module({
   imports: [
     AuthModule,
+    MatchesModule,
     TypeOrmModule.forFeature([
       UserEntity,
       PublicProfileEntity,
@@ -50,8 +47,6 @@ import { IncomingInteractionItemBuilder } from './read-models/incoming-interacti
       TradeProposalEntity,
       TradeProposalItemEntity,
       ProposedListingCommitmentEntity,
-      MatchSessionEntity,
-      ConversationThreadEntity,
     ]),
   ],
   controllers: [InteractionsController],
@@ -61,13 +56,10 @@ import { IncomingInteractionItemBuilder } from './read-models/incoming-interacti
     TradeProposalRepository,
     TradeProposalItemRepository,
     ProposedListingCommitmentRepository,
-    MatchSessionRepository,
-    ConversationThreadRepository,
     IncomingInteractionsReadRepository,
     IncomingInteractionItemBuilder,
     InteractionResponseFactory,
     InteractionConflictResolutionService,
-    MatchBootstrapService,
     CreatePurchaseIntentService,
     CancelPurchaseIntentService,
     AcceptPurchaseIntentService,

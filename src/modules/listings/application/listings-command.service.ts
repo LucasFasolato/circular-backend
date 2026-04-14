@@ -188,8 +188,11 @@ export class ListingsCommandService {
       );
 
       if (!listing.dominantPhotoId && persistedPhotos.length > 0) {
-        listing.dominantPhotoId = persistedPhotos[0].id;
-        await this.listingRepository.save(listing, manager);
+        await this.listingRepository.updateDominantPhotoId(
+          listingId,
+          persistedPhotos[0].id,
+          manager,
+        );
       }
     });
 

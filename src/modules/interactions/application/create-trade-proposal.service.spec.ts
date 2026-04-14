@@ -1,4 +1,5 @@
 import { CreateTradeProposalService } from './create-trade-proposal.service';
+import { MatchSessionRepository } from '../../matches/infrastructure/match-session.repository';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
 import { TradeProposalRepository } from '../infrastructure/trade-proposal.repository';
 import { TradeProposalItemRepository } from '../infrastructure/trade-proposal-item.repository';
@@ -28,8 +29,8 @@ describe('CreateTradeProposalService', () => {
     const dataSource = { transaction };
     const createManyTradeProposalItems = jest.fn().mockResolvedValue([]);
     const listingRepository = {
-      findById: jest.fn().mockResolvedValue(targetListing),
-      findManyByIds: jest
+      findByIdForUpdate: jest.fn().mockResolvedValue(targetListing),
+      findManyByIdsForUpdate: jest
         .fn()
         .mockResolvedValue([
           { ...proposedListing, ...(overrides?.proposedListing ?? {}) },
@@ -48,8 +49,17 @@ describe('CreateTradeProposalService', () => {
     const commitmentRepository = {
       hasActiveCommitments: jest
         .fn()
-        .mockResolvedValue(overrides?.hasCommitments ?? false),
+        .mockImplementation((listingIds: string[]) =>
+          Promise.resolve(
+            listingIds.includes('lst-target')
+              ? false
+              : (overrides?.hasCommitments ?? false),
+          ),
+        ),
     } as unknown as ProposedListingCommitmentRepository;
+    const matchSessionRepository = {
+      hasActiveByListingIds: jest.fn().mockResolvedValue(false),
+    } as unknown as MatchSessionRepository;
 
     return {
       service: new CreateTradeProposalService(
@@ -58,6 +68,7 @@ describe('CreateTradeProposalService', () => {
         tradeProposalRepository,
         tradeProposalItemRepository,
         commitmentRepository,
+        matchSessionRepository,
         new InteractionResponseFactory(),
       ),
       createManyTradeProposalItems,

@@ -8,6 +8,7 @@ import { ValidationAppError } from '../../../common/errors/validation-app.error'
 import { listingNotFoundError } from '../../listings/domain/listing-errors';
 import { LISTING_LIMITS } from '../../listings/domain/listing-limits.constants';
 import { ListingState } from '../../listings/domain/listing-state.enum';
+import { ListingAvailabilityReadRepository } from '../../listings/infrastructure/listing-availability-read.repository';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
 import { SavedListingRepository } from '../../listings/infrastructure/saved-listing.repository';
 import {
@@ -27,6 +28,7 @@ import { assertListingCanBeSaved } from './discovery-listing.policy';
 export class SavedListingsService {
   constructor(
     private readonly listingRepository: ListingRepository,
+    private readonly listingAvailabilityReadRepository: ListingAvailabilityReadRepository,
     private readonly savedListingRepository: SavedListingRepository,
     private readonly feedDismissalRepository: FeedDismissalRepository,
     private readonly discoveryFeedRepository: DiscoveryFeedRepository,
@@ -77,7 +79,16 @@ export class SavedListingsService {
       throw listingNotFoundError();
     }
 
-    assertListingCanBeSaved(listing, viewerUserId);
+    const availabilitySignals =
+      await this.listingAvailabilityReadRepository.getSignals(
+        listing.id,
+        viewerUserId,
+      );
+
+    assertListingCanBeSaved(listing, viewerUserId, {
+      hasActiveMatch: availabilitySignals.hasActiveMatch,
+      isCommittedProposedItem: availabilitySignals.isCommittedProposedItem,
+    });
 
     await this.savedListingRepository.createIfMissing(viewerUserId, listingId);
 
@@ -114,15 +125,25 @@ export class SavedListingsService {
       viewerUserId,
       listingId,
     );
+    const availabilitySignals =
+      await this.listingAvailabilityReadRepository.getSignals(
+        listingId,
+        viewerUserId,
+      );
 
     return this.discoveryItemBuilder.buildSaveStateResponse({
       listingId,
+      ownerUserId: listing.ownerUserId,
       state: listing.state as ListingState,
       allowsPurchase: listing.allowsPurchase,
       allowsTrade: listing.allowsTrade,
       isSaved,
       isDismissed,
       archivedAt: listing.archivedAt,
+      hasActivePurchaseIntent: availabilitySignals.hasActivePurchaseIntent,
+      hasActiveTradeProposal: availabilitySignals.hasActiveTradeProposal,
+      hasActiveMatch: availabilitySignals.hasActiveMatch,
+      isCommittedProposedItem: availabilitySignals.isCommittedProposedItem,
     });
   }
 

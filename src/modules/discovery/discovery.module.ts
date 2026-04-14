@@ -5,6 +5,7 @@ import { GarmentEntity } from '../listings/domain/garment.entity';
 import { ListingEntity } from '../listings/domain/listing.entity';
 import { ListingPhotoEntity } from '../listings/domain/listing-photo.entity';
 import { SavedListingEntity } from '../listings/domain/saved-listing.entity';
+import { ListingAvailabilityReadRepository } from '../listings/infrastructure/listing-availability-read.repository';
 import { ListingRepository } from '../listings/infrastructure/listing.repository';
 import { SavedListingRepository } from '../listings/infrastructure/saved-listing.repository';
 import { DiscoveryCategoriesQueryService } from './application/discovery-categories-query.service';
@@ -33,6 +34,7 @@ import { DiscoveryItemBuilder } from './read-models/discovery-item.builder';
   controllers: [FeedController, DiscoveryController, SavedListingsController],
   providers: [
     ListingRepository,
+    ListingAvailabilityReadRepository,
     SavedListingRepository,
     DiscoveryFeedRepository,
     FeedDismissalRepository,

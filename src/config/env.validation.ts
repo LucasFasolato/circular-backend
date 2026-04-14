@@ -8,6 +8,8 @@ const envSchema = z
     PORT: z.coerce.number().int().positive().default(3000),
     APP_NAME: z.string().min(1).default('circular-backend'),
     APP_VERSION: z.string().min(1).default('0.1.0'),
+    APP_COMMIT_SHA: z.string().min(1).optional(),
+    COMMIT_SHA: z.string().min(1).optional(),
 
     // -------------------------------------------------------------------------
     // Database — either a full URL or individual connection params.

@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { NotFoundError } from '../../../common/errors/not-found.error';
+import { withResponseMeta } from '../../../common/application/response-meta';
 import { ListingRepository } from '../infrastructure/listing.repository';
+import { ListingAvailabilityReadRepository } from '../infrastructure/listing-availability-read.repository';
+import { ListingAvailabilityPolicy } from './listing-availability.policy';
 import { ListingSurfaceService } from './listing-surface.service';
 import {
   ListingDetailResponseDto,
@@ -14,6 +17,7 @@ import { LISTING_LIMITS } from '../domain/listing-limits.constants';
 export class ListingQueryService {
   constructor(
     private readonly listingRepository: ListingRepository,
+    private readonly listingAvailabilityReadRepository: ListingAvailabilityReadRepository,
     private readonly listingSurfaceService: ListingSurfaceService,
   ) {}
 
@@ -28,19 +32,31 @@ export class ListingQueryService {
     }
 
     const isOwner = viewerUserId === listing.ownerUserId;
-    const listingState = listing.state as ListingState;
+    const availabilitySignals =
+      await this.listingAvailabilityReadRepository.getSignals(
+        listing.id,
+        viewerUserId,
+      );
+    const isDiscoverable = ListingAvailabilityPolicy.isDiscoverable({
+      ownerUserId: listing.ownerUserId,
+      state: listing.state as ListingState,
+      archivedAt: listing.archivedAt,
+      reservationExpiresAt: listing.reservationExpiresAt,
+      allowsPurchase: listing.allowsPurchase,
+      allowsTrade: listing.allowsTrade,
+      viewerUserId,
+      hasActiveMatch: availabilitySignals.hasActiveMatch,
+      isCommittedProposedItem: availabilitySignals.isCommittedProposedItem,
+    });
 
-    if (!isOwner && listingState !== ListingState.PUBLISHED) {
+    if (!isOwner && !isDiscoverable) {
       throw new NotFoundError('Listing not found');
     }
 
     return this.listingSurfaceService.buildDetail(listing, viewerUserId);
   }
 
-  async getMine(
-    ownerUserId: string,
-    query: ListMyListingsQueryDto,
-  ): Promise<MyListingsResponseDto> {
+  async getMine(ownerUserId: string, query: ListMyListingsQueryDto) {
     const limit = query.limit ?? LISTING_LIMITS.DEFAULT_LIST_LIMIT;
     const cursor = query.cursor ? this.decodeCursor(query.cursor) : undefined;
     const listings = await this.listingRepository.findMyListings({
@@ -58,13 +74,17 @@ export class ListingQueryService {
     );
     const lastItem = pageItems.at(-1);
 
-    return {
-      items,
-      nextCursor:
-        hasMore && lastItem
-          ? this.encodeCursor(lastItem.updatedAt.toISOString(), lastItem.id)
-          : null,
-    };
+    return withResponseMeta<MyListingsResponseDto>(
+      {
+        items,
+      },
+      {
+        nextCursor:
+          hasMore && lastItem
+            ? this.encodeCursor(lastItem.updatedAt.toISOString(), lastItem.id)
+            : null,
+      },
+    );
   }
 
   private encodeCursor(updatedAt: string, id: string): string {

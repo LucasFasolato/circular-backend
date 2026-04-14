@@ -194,7 +194,4 @@ export class ListingDetailResponseDto {
 export class MyListingsResponseDto {
   @ApiProperty({ type: [ListingDetailResponseDto] })
   items: ListingDetailResponseDto[];
-
-  @ApiProperty({ nullable: true })
-  nextCursor: string | null;
 }

@@ -1,4 +1,4 @@
-import { MatchSessionState } from './match-session-state.enum';
+import { MatchSessionState } from '../../matches/domain/match-session-state.enum';
 import { PurchaseIntentState } from './purchase-intent-state.enum';
 import { TradeProposalState } from './trade-proposal-state.enum';
 

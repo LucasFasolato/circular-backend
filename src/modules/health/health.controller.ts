@@ -15,7 +15,7 @@ export class HealthController {
     description: 'Service is healthy',
     type: HealthResponseDto,
   })
-  check(): HealthResponseDto {
+  async check(): Promise<HealthResponseDto> {
     return this.healthService.check();
   }
 }

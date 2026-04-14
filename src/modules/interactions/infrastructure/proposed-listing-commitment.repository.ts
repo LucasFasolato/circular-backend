@@ -51,4 +51,25 @@ export class ProposedListingCommitmentRepository {
 
     return count > 0;
   }
+
+  async releaseByMatchSessionId(
+    matchSessionId: string,
+    manager: EntityManager,
+  ): Promise<void> {
+    await manager
+      .createQueryBuilder()
+      .update(ProposedListingCommitmentEntity)
+      .set({
+        state: ProposedListingCommitmentState.RELEASED,
+        releasedAt: () => 'NOW()' as never,
+      })
+      .where('match_session_id = :matchSessionId', { matchSessionId })
+      .andWhere('state IN (:...activeStates)', {
+        activeStates: [
+          ProposedListingCommitmentState.RESERVED_FOR_PROPOSAL,
+          ProposedListingCommitmentState.COMMITTED_TO_MATCH,
+        ],
+      })
+      .execute();
+  }
 }

@@ -8,7 +8,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { ListingEntity } from '../../listings/domain/listing.entity';
-import { MatchSessionEntity } from './match-session.entity';
+import { MatchSessionEntity } from '../../matches/domain/match-session.entity';
 import { TradeProposalEntity } from './trade-proposal.entity';
 
 @Entity('proposed_listing_commitments')

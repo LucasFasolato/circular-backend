@@ -11,8 +11,8 @@ import {
 } from 'typeorm';
 import { UserEntity } from '../../auth/domain/user.entity';
 import { ListingEntity } from '../../listings/domain/listing.entity';
-import { PurchaseIntentEntity } from './purchase-intent.entity';
-import { TradeProposalEntity } from './trade-proposal.entity';
+import { PurchaseIntentEntity } from '../../interactions/domain/purchase-intent.entity';
+import { TradeProposalEntity } from '../../interactions/domain/trade-proposal.entity';
 import { ConversationThreadEntity } from './conversation-thread.entity';
 
 @Entity('match_sessions')

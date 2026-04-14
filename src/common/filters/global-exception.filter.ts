@@ -133,7 +133,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
   private resolveHttpCode(status: number): string {
     const map: Record<number, string> = {
-      400: 'BAD_REQUEST',
+      400: 'VALIDATION_ERROR',
       401: 'UNAUTHORIZED',
       403: 'FORBIDDEN',
       404: 'NOT_FOUND',

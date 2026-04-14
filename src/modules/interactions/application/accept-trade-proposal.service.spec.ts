@@ -3,9 +3,9 @@ import { TradeProposalRepository } from '../infrastructure/trade-proposal.reposi
 import { TradeProposalItemRepository } from '../infrastructure/trade-proposal-item.repository';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
 import { ProposedListingCommitmentRepository } from '../infrastructure/proposed-listing-commitment.repository';
-import { MatchSessionRepository } from '../infrastructure/match-session.repository';
+import { MatchSessionRepository } from '../../matches/infrastructure/match-session.repository';
 import { InteractionConflictResolutionService } from './interaction-conflict-resolution.service';
-import { MatchBootstrapService } from './match-bootstrap.service';
+import { MatchBootstrapService } from '../../matches/application/match-bootstrap.service';
 import { InteractionResponseFactory } from './interaction-response.factory';
 import { ListingState } from '../../listings/domain/listing-state.enum';
 import { TradeProposalState } from '../domain/trade-proposal-state.enum';
@@ -66,6 +66,7 @@ describe('AcceptTradeProposalService', () => {
     } as unknown as ProposedListingCommitmentRepository;
     const matchSessionRepository = {
       findActiveByListingId: jest.fn().mockResolvedValue(null),
+      hasActiveByListingIds: jest.fn().mockResolvedValue(false),
     } as unknown as MatchSessionRepository;
     const conflictResolution = {
       expireCompetingInteractionsForListing,
