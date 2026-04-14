@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
-import { SavedListingEntity } from '../domain/saved-listing.entity';
+import { FeedDismissalEntity } from '../domain/feed-dismissal.entity';
 
 @Injectable()
-export class SavedListingRepository {
+export class FeedDismissalRepository {
   constructor(
-    @InjectRepository(SavedListingEntity)
-    private readonly repo: Repository<SavedListingEntity>,
+    @InjectRepository(FeedDismissalEntity)
+    private readonly repo: Repository<FeedDismissalEntity>,
   ) {}
 
   async createIfMissing(
@@ -16,12 +16,12 @@ export class SavedListingRepository {
     manager?: EntityManager,
   ): Promise<boolean> {
     const repo = manager
-      ? manager.getRepository(SavedListingEntity)
+      ? manager.getRepository(FeedDismissalEntity)
       : this.repo;
     const result = await repo
       .createQueryBuilder()
       .insert()
-      .into(SavedListingEntity)
+      .into(FeedDismissalEntity)
       .values({ userId, listingId })
       .orIgnore()
       .execute();
@@ -29,25 +29,12 @@ export class SavedListingRepository {
     return (result.identifiers?.length ?? 0) > 0;
   }
 
-  async remove(
-    userId: string,
-    listingId: string,
-    manager?: EntityManager,
-  ): Promise<boolean> {
-    const repo = manager
-      ? manager.getRepository(SavedListingEntity)
-      : this.repo;
-    const result = await repo.delete({ userId, listingId });
-
-    return (result.affected ?? 0) > 0;
-  }
-
   async exists(userId: string, listingId: string): Promise<boolean> {
-    const savedListing = await this.repo.findOne({
+    const dismissal = await this.repo.findOne({
       where: { userId, listingId },
       select: ['id'],
     });
 
-    return savedListing !== null;
+    return dismissal !== null;
   }
 }

@@ -10,6 +10,7 @@ import { ListingsModule } from './modules/listings/listings.module';
 import { ModerationModule } from './modules/moderation/moderation.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
+import { DiscoveryModule } from './modules/discovery/discovery.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { ProfilesModule } from './modules/profiles/profiles.module';
     AuthModule,
     ProfilesModule,
     ListingsModule,
+    DiscoveryModule,
     ModerationModule,
   ],
 })

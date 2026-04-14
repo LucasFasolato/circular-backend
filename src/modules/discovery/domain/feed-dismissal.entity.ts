@@ -8,15 +8,15 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { UserEntity } from '../../auth/domain/user.entity';
-import { ListingEntity } from './listing.entity';
+import { ListingEntity } from '../../listings/domain/listing.entity';
 
-@Entity('saved_listings')
-@Index('uq_saved_listings_user_listing', ['userId', 'listingId'], {
+@Entity('feed_dismissals')
+@Index('uq_feed_dismissals_user_listing', ['userId', 'listingId'], {
   unique: true,
 })
-@Index('idx_saved_listings_user_id_created_at', ['userId', 'createdAt'])
-@Index('idx_saved_listings_listing_id', ['listingId'])
-export class SavedListingEntity {
+@Index('idx_feed_dismissals_user_id', ['userId'])
+@Index('idx_feed_dismissals_listing_id', ['listingId'])
+export class FeedDismissalEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -30,9 +30,7 @@ export class SavedListingEntity {
   @Column({ type: 'uuid', name: 'listing_id' })
   listingId: string;
 
-  @ManyToOne(() => ListingEntity, (listing) => listing.savedListings, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(() => ListingEntity, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'listing_id' })
   listing: ListingEntity;
 

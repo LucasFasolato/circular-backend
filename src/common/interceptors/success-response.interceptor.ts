@@ -6,6 +6,10 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import {
+  hasResponseMeta,
+  RESPONSE_META_KEY,
+} from '../application/response-meta';
 
 export interface SuccessResponse<T> {
   success: true;
@@ -23,11 +27,23 @@ export class SuccessResponseInterceptor<T> implements NestInterceptor<
     next: CallHandler<T>,
   ): Observable<SuccessResponse<T>> {
     return next.handle().pipe(
-      map((data) => ({
-        success: true as const,
-        data,
-        meta: {},
-      })),
+      map((data) => {
+        if (hasResponseMeta(data)) {
+          const { [RESPONSE_META_KEY]: meta, ...payload } = data;
+
+          return {
+            success: true as const,
+            data: payload as T,
+            meta,
+          };
+        }
+
+        return {
+          success: true as const,
+          data,
+          meta: {},
+        };
+      }),
     );
   }
 }

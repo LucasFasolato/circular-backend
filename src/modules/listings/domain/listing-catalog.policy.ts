@@ -43,6 +43,24 @@ const CLOTHING_CATEGORIES = new Set<ListingCategory>([
   ListingCategory.DRESSES_AND_ONE_PIECE,
 ]);
 
+export function getAvailableSizesForCategory(
+  category: ListingCategory,
+): GarmentSize[] {
+  if (category === ListingCategory.FOOTWEAR) {
+    return Array.from(FOOTWEAR_SIZES);
+  }
+
+  if (ONE_SIZE_CATEGORIES.has(category)) {
+    return [GarmentSize.ONE_SIZE];
+  }
+
+  if (CLOTHING_CATEGORIES.has(category)) {
+    return Array.from(CLOTHING_SIZES);
+  }
+
+  return [];
+}
+
 export function isValidGarmentCondition(
   value: string,
 ): value is GarmentCondition {

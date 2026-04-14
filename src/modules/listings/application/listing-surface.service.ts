@@ -13,6 +13,7 @@ import {
 import { ListingState } from '../domain/listing-state.enum';
 import { LISTING_LIMITS } from '../domain/listing-limits.constants';
 import { ImageAuditStatus } from '../domain/image-audit-status.enum';
+import { deriveQualityLabels } from '../domain/listing-quality-label.policy';
 
 @Injectable()
 export class ListingSurfaceService {
@@ -42,7 +43,16 @@ export class ListingSurfaceService {
         state: listingState,
         description: listing.description,
         qualityScore: listing.qualityScore,
-        qualityLabels: this.deriveQualityLabels(listing),
+        qualityLabels: deriveQualityLabels(
+          listing.qualityScore,
+          listing.photos.filter((photo) => {
+            const auditStatus = photo.auditStatus as ImageAuditStatus;
+            return (
+              auditStatus === ImageAuditStatus.APPROVED ||
+              auditStatus === ImageAuditStatus.PENDING
+            );
+          }).length,
+        ),
         garment: {
           category: listing.garment.category as never,
           subcategory: listing.garment.subcategory,
@@ -135,27 +145,5 @@ export class ListingSurfaceService {
     return Promise.all(
       listings.map((listing) => this.buildDetail(listing, viewerUserId)),
     );
-  }
-
-  private deriveQualityLabels(listing: ListingEntity): string[] {
-    const labels: string[] = [];
-
-    if ((listing.qualityScore ?? 0) >= 80) {
-      labels.push('HIGH_QUALITY');
-    }
-
-    const approvedOrPendingPhotos = listing.photos.filter((photo) => {
-      const auditStatus = photo.auditStatus as ImageAuditStatus;
-      return (
-        auditStatus === ImageAuditStatus.APPROVED ||
-        auditStatus === ImageAuditStatus.PENDING
-      );
-    }).length;
-
-    if (approvedOrPendingPhotos >= LISTING_LIMITS.MIN_PHOTOS_TO_SUBMIT) {
-      labels.push('GOOD_PHOTOS');
-    }
-
-    return labels;
   }
 }

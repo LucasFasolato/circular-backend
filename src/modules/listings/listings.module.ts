@@ -52,5 +52,6 @@ import { ListingsController } from './presentation/listings.controller';
     ListingQueryService,
     ListingsCommandService,
   ],
+  exports: [ListingRepository, SavedListingRepository],
 })
 export class ListingsModule {}
