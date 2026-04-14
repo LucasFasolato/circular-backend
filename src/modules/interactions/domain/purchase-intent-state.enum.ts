@@ -1,0 +1,8 @@
+export enum PurchaseIntentState {
+  ACTIVE = 'ACTIVE',
+  ACCEPTED = 'ACCEPTED',
+  REJECTED = 'REJECTED',
+  CANCELLED = 'CANCELLED',
+  EXPIRED = 'EXPIRED',
+  CLOSED = 'CLOSED',
+}

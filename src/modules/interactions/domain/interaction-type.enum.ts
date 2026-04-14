@@ -1,0 +1,4 @@
+export enum InteractionType {
+  PURCHASE_INTENT = 'PURCHASE_INTENT',
+  TRADE_PROPOSAL = 'TRADE_PROPOSAL',
+}

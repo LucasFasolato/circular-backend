@@ -11,6 +11,7 @@ import { ModerationModule } from './modules/moderation/moderation.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
 import { DiscoveryModule } from './modules/discovery/discovery.module';
+import { InteractionsModule } from './modules/interactions/interactions.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { DiscoveryModule } from './modules/discovery/discovery.module';
     ProfilesModule,
     ListingsModule,
     DiscoveryModule,
+    InteractionsModule,
     ModerationModule,
   ],
 })

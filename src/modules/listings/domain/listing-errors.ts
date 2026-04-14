@@ -19,3 +19,19 @@ export function listingNotAvailableError(): ListingsAppError {
     'The listing is not available for this action.',
   );
 }
+
+export function listingAlreadyReservedError(): ListingsAppError {
+  return new ListingsAppError(
+    'LISTING_ALREADY_RESERVED',
+    409,
+    'The listing is already reserved.',
+  );
+}
+
+export function listingAlreadyClosedError(): ListingsAppError {
+  return new ListingsAppError(
+    'LISTING_ALREADY_CLOSED',
+    409,
+    'The listing is already closed.',
+  );
+}

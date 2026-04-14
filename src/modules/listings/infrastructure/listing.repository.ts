@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, EntityManager, Repository } from 'typeorm';
+import { Brackets, EntityManager, In, Repository } from 'typeorm';
 import { ListingEntity } from '../domain/listing.entity';
 
 export interface MyListingsQuery {
@@ -55,6 +55,51 @@ export class ListingRepository {
         },
       },
     });
+  }
+
+  async findByIdForUpdate(
+    listingId: string,
+    manager: EntityManager,
+  ): Promise<ListingEntity | null> {
+    return manager
+      .getRepository(ListingEntity)
+      .createQueryBuilder('listing')
+      .setLock('pessimistic_write')
+      .where('listing.id = :listingId', { listingId })
+      .getOne();
+  }
+
+  async findManyByIds(
+    ids: string[],
+    manager?: EntityManager,
+  ): Promise<ListingEntity[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const repo = manager ? manager.getRepository(ListingEntity) : this.repo;
+    return repo.find({
+      where: { id: In(ids) },
+      relations: ['garment', 'dominantPhoto'],
+    });
+  }
+
+  async findManyByIdsForUpdate(
+    ids: string[],
+    manager: EntityManager,
+  ): Promise<ListingEntity[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return manager
+      .getRepository(ListingEntity)
+      .createQueryBuilder('listing')
+      .leftJoinAndSelect('listing.garment', 'garment')
+      .leftJoinAndSelect('listing.dominantPhoto', 'dominantPhoto')
+      .setLock('pessimistic_write')
+      .where('listing.id IN (:...ids)', { ids })
+      .getMany();
   }
 
   async findMyListings(query: MyListingsQuery): Promise<ListingEntity[]> {

@@ -1,0 +1,5 @@
+export enum ProposedListingCommitmentState {
+  RESERVED_FOR_PROPOSAL = 'RESERVED_FOR_PROPOSAL',
+  COMMITTED_TO_MATCH = 'COMMITTED_TO_MATCH',
+  RELEASED = 'RELEASED',
+}

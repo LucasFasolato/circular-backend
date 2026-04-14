@@ -1,0 +1,9 @@
+export enum MatchSessionState {
+  OPEN = 'OPEN',
+  ACTIVE = 'ACTIVE',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  EXPIRED = 'EXPIRED',
+  CANCELLED = 'CANCELLED',
+  CLOSED = 'CLOSED',
+}
