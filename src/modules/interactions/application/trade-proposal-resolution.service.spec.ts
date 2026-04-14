@@ -3,6 +3,7 @@ import { RejectTradeProposalService } from './reject-trade-proposal.service';
 import { TradeProposalRepository } from '../infrastructure/trade-proposal.repository';
 import { TradeProposalItemRepository } from '../infrastructure/trade-proposal-item.repository';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
+import { NotificationCommandService } from '../../notifications/application/notification-command.service';
 import { TradeProposalState } from '../domain/trade-proposal-state.enum';
 import { InteractionResponseFactory } from './interaction-response.factory';
 import { ListingState } from '../../listings/domain/listing-state.enum';
@@ -59,11 +60,15 @@ describe('trade proposal resolution services', () => {
     const listingRepository = {
       findByIdForUpdate: jest.fn().mockResolvedValue(listing),
     } as unknown as ListingRepository;
+    const notificationCommandService = {
+      notifyInteractionRejected: jest.fn().mockResolvedValue(undefined),
+    } as unknown as NotificationCommandService;
     const service = new RejectTradeProposalService(
       { transaction } as never,
       repository,
       listingRepository,
       new InteractionResponseFactory(),
+      notificationCommandService,
     );
 
     const result = await service.execute('usr-owner', 'tp-1');

@@ -4,6 +4,7 @@ import { ForbiddenError } from '../../../common/errors/forbidden.error';
 import { listingNotFoundError } from '../../listings/domain/listing-errors';
 import { ListingState } from '../../listings/domain/listing-state.enum';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
+import { NotificationCommandService } from '../../notifications/application/notification-command.service';
 import { ProposedListingCommitmentRepository } from '../../interactions/infrastructure/proposed-listing-commitment.repository';
 import { PurchaseIntentRepository } from '../../interactions/infrastructure/purchase-intent.repository';
 import { TradeProposalRepository } from '../../interactions/infrastructure/trade-proposal.repository';
@@ -17,8 +18,6 @@ import {
   matchNotFoundError,
 } from '../domain/match-errors';
 import { ConversationThreadState } from '../domain/conversation-thread-state.enum';
-import { ConversationThreadEntity } from '../domain/conversation-thread.entity';
-import { MatchSessionEntity } from '../domain/match-session.entity';
 import { MatchSessionState } from '../domain/match-session-state.enum';
 import {
   canConversationTransition,
@@ -31,6 +30,7 @@ import { ConversationMessageRepository } from '../infrastructure/conversation-me
 import { ConversationThreadRepository } from '../infrastructure/conversation-thread.repository';
 import { MatchReadRepository } from '../infrastructure/match-read.repository';
 import { MatchSessionRepository } from '../infrastructure/match-session.repository';
+import { MatchExpirationService } from './match-expiration.service';
 import { ConversationMessageMutationResponseDto } from '../presentation/dto/conversation-response.dto';
 import { MatchMutationResponseDto } from '../presentation/dto/match-response.dto';
 import { MatchSurfaceBuilder } from '../read-models/match-surface.builder';
@@ -45,9 +45,11 @@ export class MatchCommandService {
     private readonly matchReadRepository: MatchReadRepository,
     private readonly matchSurfaceBuilder: MatchSurfaceBuilder,
     private readonly listingRepository: ListingRepository,
+    private readonly notificationCommandService: NotificationCommandService,
     private readonly purchaseIntentRepository: PurchaseIntentRepository,
     private readonly tradeProposalRepository: TradeProposalRepository,
     private readonly proposedListingCommitmentRepository: ProposedListingCommitmentRepository,
+    private readonly matchExpirationService: MatchExpirationService,
   ) {}
 
   async confirmSuccess(
@@ -67,7 +69,13 @@ export class MatchCommandService {
         match.counterpartyUserId,
         viewerUserId,
       );
-      await this.expireIfNeeded(match, listing.id, manager, conversation);
+      await this.matchExpirationService.expireLockedMatchIfDue({
+        match,
+        listing,
+        conversation,
+        manager,
+        now: new Date(),
+      });
 
       const state = match.state as MatchSessionState;
       if (!isMatchActive(state)) {
@@ -108,6 +116,23 @@ export class MatchCommandService {
         await this.closeOriginInteraction(match, manager, now);
         await this.proposedListingCommitmentRepository.releaseByMatchSessionId(
           match.id,
+          manager,
+        );
+        await this.notificationCommandService.notifyMatchCompletedMany(
+          [
+            {
+              userId: match.ownerUserId,
+              listingId: listing.id,
+              matchSessionId: match.id,
+              completedAt: now,
+            },
+            {
+              userId: match.counterpartyUserId,
+              listingId: listing.id,
+              matchSessionId: match.id,
+              completedAt: now,
+            },
+          ],
           manager,
         );
         await this.listingRepository.save(listing, manager);
@@ -165,7 +190,13 @@ export class MatchCommandService {
         match.counterpartyUserId,
         viewerUserId,
       );
-      await this.expireIfNeeded(match, listing.id, manager, conversation);
+      await this.matchExpirationService.expireLockedMatchIfDue({
+        match,
+        listing,
+        conversation,
+        manager,
+        now: new Date(),
+      });
       this.assertConversationOpen(
         conversation.state as ConversationThreadState,
       );
@@ -188,6 +219,21 @@ export class MatchCommandService {
           textBody: text,
           quickActionCode: null,
           metadata: {},
+        },
+        manager,
+      );
+
+      await this.notificationCommandService.notifyNewConversationMessage(
+        {
+          userId:
+            viewerUserId === match.ownerUserId
+              ? match.counterpartyUserId
+              : match.ownerUserId,
+          matchSessionId: match.id,
+          conversationThreadId: conversation.id,
+          messageId: message.id,
+          senderUserId: viewerUserId,
+          messageType: MessageType.TEXT,
         },
         manager,
       );
@@ -223,7 +269,13 @@ export class MatchCommandService {
         match.counterpartyUserId,
         viewerUserId,
       );
-      await this.expireIfNeeded(match, listing.id, manager, conversation);
+      await this.matchExpirationService.expireLockedMatchIfDue({
+        match,
+        listing,
+        conversation,
+        manager,
+        now: new Date(),
+      });
       this.assertConversationOpen(
         conversation.state as ConversationThreadState,
       );
@@ -250,6 +302,21 @@ export class MatchCommandService {
         manager,
       );
 
+      await this.notificationCommandService.notifyNewConversationMessage(
+        {
+          userId:
+            viewerUserId === match.ownerUserId
+              ? match.counterpartyUserId
+              : match.ownerUserId,
+          matchSessionId: match.id,
+          conversationThreadId: conversation.id,
+          messageId: message.id,
+          senderUserId: viewerUserId,
+          messageType: MessageType.QUICK_ACTION,
+        },
+        manager,
+      );
+
       return message.id;
     });
 
@@ -261,27 +328,8 @@ export class MatchCommandService {
   }
 
   async expireDueMatches(): Promise<number> {
-    const expiredIds = await this.matchSessionRepository.findExpiredActiveIds(
-      new Date(),
-    );
-
-    for (const matchSessionId of expiredIds) {
-      await this.dataSource.transaction(async (manager) => {
-        const match = await this.getMatchForUpdate(matchSessionId, manager);
-        const listing = await this.getListingForUpdate(
-          match.listingId,
-          manager,
-        );
-        const conversation = await this.getConversationForUpdate(
-          match.id,
-          manager,
-        );
-
-        await this.expireIfNeeded(match, listing.id, manager, conversation);
-      });
-    }
-
-    return expiredIds.length;
+    const result = await this.matchExpirationService.expireDueMatches();
+    return result.expiredCount;
   }
 
   private async transitionMatchToFailureState(
@@ -302,7 +350,13 @@ export class MatchCommandService {
         match.counterpartyUserId,
         viewerUserId,
       );
-      await this.expireIfNeeded(match, listing.id, manager, conversation);
+      await this.matchExpirationService.expireLockedMatchIfDue({
+        match,
+        listing,
+        conversation,
+        manager,
+        now: new Date(),
+      });
 
       const state = match.state as MatchSessionState;
       if (!isMatchActive(state) || !canMatchTransition(state, terminalState)) {
@@ -337,50 +391,6 @@ export class MatchCommandService {
       await this.conversationThreadRepository.save(conversation, manager);
       await this.matchSessionRepository.save(match, manager);
     });
-  }
-
-  private async expireIfNeeded(
-    match: MatchSessionEntity,
-    listingId: string,
-    manager: EntityManager,
-    conversation: ConversationThreadEntity,
-  ): Promise<void> {
-    const state = match.state as MatchSessionState;
-    if (!isMatchActive(state) || match.expiresAt > new Date()) {
-      return;
-    }
-
-    if (!canMatchTransition(state, MatchSessionState.EXPIRED)) {
-      throw matchAlreadyClosedError();
-    }
-
-    const now = new Date();
-    const listing = await this.getListingForUpdate(listingId, manager);
-    match.state = MatchSessionState.EXPIRED;
-    match.failedAt = null;
-    match.cancelledAt = null;
-    match.completedAt = null;
-    listing.state = ListingState.PUBLISHED;
-    listing.reservationExpiresAt = null;
-
-    if (
-      canConversationTransition(
-        conversation.state as ConversationThreadState,
-        ConversationThreadState.CLOSED,
-      )
-    ) {
-      conversation.state = ConversationThreadState.CLOSED;
-      conversation.closedAt = now;
-    }
-
-    await this.closeOriginInteraction(match, manager, now);
-    await this.proposedListingCommitmentRepository.releaseByMatchSessionId(
-      match.id,
-      manager,
-    );
-    await this.listingRepository.save(listing, manager);
-    await this.conversationThreadRepository.save(conversation, manager);
-    await this.matchSessionRepository.save(match, manager);
   }
 
   private async closeOriginInteraction(

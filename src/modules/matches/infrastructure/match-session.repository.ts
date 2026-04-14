@@ -80,7 +80,7 @@ export class MatchSessionRepository {
       .getOne();
   }
 
-  async findExpiredActiveIds(now: Date): Promise<string[]> {
+  async findExpiredActiveIds(now: Date, limit = 100): Promise<string[]> {
     const rows = await this.repo
       .createQueryBuilder('matchSession')
       .select('matchSession.id', 'id')
@@ -88,6 +88,9 @@ export class MatchSessionRepository {
         states: [MatchSessionState.OPEN, MatchSessionState.ACTIVE],
       })
       .andWhere('matchSession.expires_at <= :now', { now: now.toISOString() })
+      .orderBy('matchSession.expires_at', 'ASC')
+      .addOrderBy('matchSession.id', 'ASC')
+      .take(limit)
       .getRawMany<{ id: string }>();
 
     return rows.map((row) => row.id);

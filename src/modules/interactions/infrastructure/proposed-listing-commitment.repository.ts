@@ -72,4 +72,24 @@ export class ProposedListingCommitmentRepository {
       })
       .execute();
   }
+
+  async findActiveByMatchSessionIdForUpdate(
+    matchSessionId: string,
+    manager: EntityManager,
+  ): Promise<ProposedListingCommitmentEntity[]> {
+    return manager
+      .getRepository(ProposedListingCommitmentEntity)
+      .createQueryBuilder('commitment')
+      .setLock('pessimistic_write')
+      .where('commitment.match_session_id = :matchSessionId', {
+        matchSessionId,
+      })
+      .andWhere('commitment.state IN (:...activeStates)', {
+        activeStates: [
+          ProposedListingCommitmentState.RESERVED_FOR_PROPOSAL,
+          ProposedListingCommitmentState.COMMITTED_TO_MATCH,
+        ],
+      })
+      .getMany();
+  }
 }

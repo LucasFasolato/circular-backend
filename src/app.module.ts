@@ -13,6 +13,7 @@ import { ProfilesModule } from './modules/profiles/profiles.module';
 import { DiscoveryModule } from './modules/discovery/discovery.module';
 import { InteractionsModule } from './modules/interactions/interactions.module';
 import { MatchesModule } from './modules/matches/matches.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { MatchesModule } from './modules/matches/matches.module';
     ProfilesModule,
     ListingsModule,
     DiscoveryModule,
+    NotificationsModule,
     MatchesModule,
     InteractionsModule,
     ModerationModule,

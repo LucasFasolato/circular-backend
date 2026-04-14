@@ -3,6 +3,7 @@ import { MatchSessionRepository } from '../../matches/infrastructure/match-sessi
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
 import { ProposedListingCommitmentRepository } from '../infrastructure/proposed-listing-commitment.repository';
 import { PurchaseIntentRepository } from '../infrastructure/purchase-intent.repository';
+import { NotificationCommandService } from '../../notifications/application/notification-command.service';
 import { InteractionResponseFactory } from './interaction-response.factory';
 import { ListingState } from '../../listings/domain/listing-state.enum';
 
@@ -42,6 +43,10 @@ describe('CreatePurchaseIntentService', () => {
     const matchSessionRepository = {
       hasActiveByListingIds: jest.fn().mockResolvedValue(false),
     } as unknown as MatchSessionRepository;
+    const notifyPurchaseIntentReceived = jest.fn().mockResolvedValue(undefined);
+    const notificationCommandService = {
+      notifyPurchaseIntentReceived,
+    } as unknown as NotificationCommandService;
     const responseFactory = new InteractionResponseFactory();
 
     return {
@@ -52,14 +57,17 @@ describe('CreatePurchaseIntentService', () => {
         commitmentRepository,
         matchSessionRepository,
         responseFactory,
+        notificationCommandService,
       ),
       listingRepository,
       createPurchaseIntent,
+      notifyPurchaseIntentReceived,
     };
   }
 
   it('creates a purchase intent over a published listing', async () => {
-    const { service, createPurchaseIntent } = createService();
+    const { service, createPurchaseIntent, notifyPurchaseIntentReceived } =
+      createService();
 
     const result = await service.execute('usr-buyer', 'lst-1', {
       source: 'LISTING_DETAIL',
@@ -72,6 +80,15 @@ describe('CreatePurchaseIntentService', () => {
         state: 'ACTIVE',
         source: 'LISTING_DETAIL',
       }),
+      expect.any(Object),
+    );
+    expect(notifyPurchaseIntentReceived).toHaveBeenCalledWith(
+      {
+        userId: 'usr-owner',
+        listingId: 'lst-1',
+        purchaseIntentId: 'pi-1',
+        buyerUserId: 'usr-buyer',
+      },
       expect.any(Object),
     );
     expect(result.purchaseIntent.state).toBe('ACTIVE');

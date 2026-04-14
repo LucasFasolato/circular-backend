@@ -4,6 +4,7 @@ import { ValidationAppError } from '../../../common/errors/validation-app.error'
 import { listingNotFoundError } from '../../listings/domain/listing-errors';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
 import { MatchSessionRepository } from '../../matches/infrastructure/match-session.repository';
+import { NotificationCommandService } from '../../notifications/application/notification-command.service';
 import { INTERACTION_LIMITS } from '../domain/interaction-limits.constants';
 import { purchaseIntentAlreadyExistsError } from '../domain/interaction-errors';
 import { PurchaseIntentState } from '../domain/purchase-intent-state.enum';
@@ -24,6 +25,7 @@ export class CreatePurchaseIntentService {
     private readonly proposedListingCommitmentRepository: ProposedListingCommitmentRepository,
     private readonly matchSessionRepository: MatchSessionRepository,
     private readonly interactionResponseFactory: InteractionResponseFactory,
+    private readonly notificationCommandService: NotificationCommandService,
   ) {}
 
   async execute(
@@ -81,6 +83,16 @@ export class CreatePurchaseIntentService {
             cancelledAt: null,
             closedAt: null,
             resolvedByUserId: null,
+          },
+          manager,
+        );
+
+        await this.notificationCommandService.notifyPurchaseIntentReceived(
+          {
+            userId: listing.ownerUserId,
+            listingId,
+            purchaseIntentId: purchaseIntent.id,
+            buyerUserId,
           },
           manager,
         );

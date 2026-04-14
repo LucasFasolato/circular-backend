@@ -10,6 +10,7 @@ import { ListingState } from '../../listings/domain/listing-state.enum';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
 import { MatchBootstrapService } from '../../matches/application/match-bootstrap.service';
 import { MatchSessionRepository } from '../../matches/infrastructure/match-session.repository';
+import { NotificationCommandService } from '../../notifications/application/notification-command.service';
 import { InteractionType } from '../domain/interaction-type.enum';
 import { interactionNotActiveError } from '../domain/interaction-errors';
 import { PurchaseIntentState } from '../domain/purchase-intent-state.enum';
@@ -31,6 +32,7 @@ export class AcceptPurchaseIntentService {
     private readonly interactionConflictResolutionService: InteractionConflictResolutionService,
     private readonly matchBootstrapService: MatchBootstrapService,
     private readonly interactionResponseFactory: InteractionResponseFactory,
+    private readonly notificationCommandService: NotificationCommandService,
   ) {}
 
   async execute(
@@ -112,6 +114,18 @@ export class AcceptPurchaseIntentService {
         purchaseIntent.id,
         'PURCHASE_INTENT',
         ownerUserId,
+        manager,
+      );
+
+      await this.notificationCommandService.notifyInteractionAccepted(
+        {
+          userId: purchaseIntent.buyerUserId,
+          listingId: listing.id,
+          interactionId: purchaseIntent.id,
+          interactionType: 'PURCHASE_INTENT',
+          matchSessionId: match.matchSessionId,
+          conversationThreadId: match.conversationThreadId,
+        },
         manager,
       );
 

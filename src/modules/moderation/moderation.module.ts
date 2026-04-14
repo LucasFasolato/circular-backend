@@ -6,6 +6,7 @@ import { ListingEntity } from '../listings/domain/listing.entity';
 import { ListingPhotoEntity } from '../listings/domain/listing-photo.entity';
 import { ListingPhotoRepository } from '../listings/infrastructure/listing-photo.repository';
 import { ListingRepository } from '../listings/infrastructure/listing.repository';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { IMAGE_MODERATION_PROVIDER } from './domain/image-moderation-provider.interface';
 import { ImageAuditEntity } from './domain/image-audit.entity';
 import { ModerationReviewEntity } from './domain/moderation-review.entity';
@@ -18,6 +19,7 @@ import { ModerationController } from './presentation/moderation.controller';
 
 @Module({
   imports: [
+    NotificationsModule,
     TypeOrmModule.forFeature([
       UserEntity,
       ListingEntity,

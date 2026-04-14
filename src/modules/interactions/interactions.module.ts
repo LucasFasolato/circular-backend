@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { MatchesModule } from '../matches/matches.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { UserEntity } from '../auth/domain/user.entity';
 import { PublicProfileEntity } from '../profiles/domain/public-profile.entity';
 import { ReputationProfileEntity } from '../profiles/domain/reputation-profile.entity';
@@ -36,6 +37,7 @@ import { IncomingInteractionItemBuilder } from './read-models/incoming-interacti
   imports: [
     AuthModule,
     MatchesModule,
+    NotificationsModule,
     TypeOrmModule.forFeature([
       UserEntity,
       PublicProfileEntity,

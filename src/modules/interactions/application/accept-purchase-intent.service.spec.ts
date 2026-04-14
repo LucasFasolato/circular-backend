@@ -4,6 +4,7 @@ import { ListingRepository } from '../../listings/infrastructure/listing.reposit
 import { MatchSessionRepository } from '../../matches/infrastructure/match-session.repository';
 import { InteractionConflictResolutionService } from './interaction-conflict-resolution.service';
 import { MatchBootstrapService } from '../../matches/application/match-bootstrap.service';
+import { NotificationCommandService } from '../../notifications/application/notification-command.service';
 import { InteractionResponseFactory } from './interaction-response.factory';
 import { ListingState } from '../../listings/domain/listing-state.enum';
 import { PurchaseIntentState } from '../domain/purchase-intent-state.enum';
@@ -62,6 +63,10 @@ describe('AcceptPurchaseIntentService', () => {
     const matchBootstrap = {
       createPurchaseMatch,
     } as unknown as MatchBootstrapService;
+    const notifyInteractionAccepted = jest.fn().mockResolvedValue(undefined);
+    const notificationCommandService = {
+      notifyInteractionAccepted,
+    } as unknown as NotificationCommandService;
 
     return {
       service: new AcceptPurchaseIntentService(
@@ -73,11 +78,13 @@ describe('AcceptPurchaseIntentService', () => {
         conflictResolution,
         matchBootstrap,
         new InteractionResponseFactory(),
+        notificationCommandService,
       ),
       purchaseIntent,
       listing,
       expireCompetingInteractionsForListing,
       createPurchaseMatch,
+      notifyInteractionAccepted,
     };
   }
 
@@ -88,6 +95,7 @@ describe('AcceptPurchaseIntentService', () => {
       listing,
       expireCompetingInteractionsForListing,
       createPurchaseMatch,
+      notifyInteractionAccepted,
     } = createService();
 
     const result = await service.execute('usr-owner', 'pi-1');
@@ -100,6 +108,17 @@ describe('AcceptPurchaseIntentService', () => {
       'pi-1',
       'PURCHASE_INTENT',
       'usr-owner',
+      expect.any(Object),
+    );
+    expect(notifyInteractionAccepted).toHaveBeenCalledWith(
+      {
+        userId: 'usr-buyer',
+        listingId: 'lst-1',
+        interactionId: 'pi-1',
+        interactionType: 'PURCHASE_INTENT',
+        matchSessionId: 'ms-1',
+        conversationThreadId: 'conv-1',
+      },
       expect.any(Object),
     );
     expect(result.matchSessionId).toBe('ms-1');

@@ -12,11 +12,13 @@ import { TradeProposalEntity } from '../interactions/domain/trade-proposal.entit
 import { PurchaseIntentRepository } from '../interactions/infrastructure/purchase-intent.repository';
 import { ProposedListingCommitmentRepository } from '../interactions/infrastructure/proposed-listing-commitment.repository';
 import { TradeProposalRepository } from '../interactions/infrastructure/trade-proposal.repository';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { ConversationMessageEntity } from './domain/conversation-message.entity';
 import { ConversationThreadEntity } from './domain/conversation-thread.entity';
 import { MatchSessionEntity } from './domain/match-session.entity';
 import { MatchBootstrapService } from './application/match-bootstrap.service';
 import { MatchCommandService } from './application/match-command.service';
+import { MatchExpirationService } from './application/match-expiration.service';
 import { MatchQueryService } from './application/match-query.service';
 import { SystemIntegrityAuditService } from './application/system-integrity-audit.service';
 import { ConversationMessageRepository } from './infrastructure/conversation-message.repository';
@@ -29,6 +31,7 @@ import { MatchSurfaceBuilder } from './read-models/match-surface.builder';
 
 @Module({
   imports: [
+    NotificationsModule,
     TypeOrmModule.forFeature([
       UserEntity,
       PublicProfileEntity,
@@ -55,12 +58,14 @@ import { MatchSurfaceBuilder } from './read-models/match-surface.builder';
     MatchReadRepository,
     MatchSurfaceBuilder,
     MatchBootstrapService,
+    MatchExpirationService,
     MatchQueryService,
     MatchCommandService,
     SystemIntegrityAuditService,
   ],
   exports: [
     MatchBootstrapService,
+    MatchExpirationService,
     MatchSessionRepository,
     ConversationThreadRepository,
     MatchQueryService,

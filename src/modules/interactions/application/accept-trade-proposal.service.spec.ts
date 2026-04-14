@@ -6,6 +6,7 @@ import { ProposedListingCommitmentRepository } from '../infrastructure/proposed-
 import { MatchSessionRepository } from '../../matches/infrastructure/match-session.repository';
 import { InteractionConflictResolutionService } from './interaction-conflict-resolution.service';
 import { MatchBootstrapService } from '../../matches/application/match-bootstrap.service';
+import { NotificationCommandService } from '../../notifications/application/notification-command.service';
 import { InteractionResponseFactory } from './interaction-response.factory';
 import { ListingState } from '../../listings/domain/listing-state.enum';
 import { TradeProposalState } from '../domain/trade-proposal-state.enum';
@@ -79,6 +80,10 @@ describe('AcceptTradeProposalService', () => {
         expiresAt: new Date('2026-04-14T12:00:00.000Z'),
       }),
     } as unknown as MatchBootstrapService;
+    const notifyInteractionAccepted = jest.fn().mockResolvedValue(undefined);
+    const notificationCommandService = {
+      notifyInteractionAccepted,
+    } as unknown as NotificationCommandService;
 
     return {
       service: new AcceptTradeProposalService(
@@ -91,11 +96,13 @@ describe('AcceptTradeProposalService', () => {
         conflictResolution,
         matchBootstrap,
         new InteractionResponseFactory(),
+        notificationCommandService,
       ),
       tradeProposal,
       targetListing,
       createManyCommitments,
       expireTradeProposalsUsingUnavailableProposedItems,
+      notifyInteractionAccepted,
     };
   }
 
@@ -106,6 +113,7 @@ describe('AcceptTradeProposalService', () => {
       targetListing,
       createManyCommitments,
       expireTradeProposalsUsingUnavailableProposedItems,
+      notifyInteractionAccepted,
     } = createService();
 
     const result = await service.execute('usr-owner', 'tp-1');
@@ -129,6 +137,17 @@ describe('AcceptTradeProposalService', () => {
       ['lst-proposed', 'lst-target'],
       'tp-1',
       'usr-owner',
+      expect.any(Object),
+    );
+    expect(notifyInteractionAccepted).toHaveBeenCalledWith(
+      {
+        userId: 'usr-proposer',
+        listingId: 'lst-target',
+        interactionId: 'tp-1',
+        interactionType: 'TRADE_PROPOSAL',
+        matchSessionId: 'ms-1',
+        conversationThreadId: 'conv-1',
+      },
       expect.any(Object),
     );
     expect(result.matchSessionId).toBe('ms-1');

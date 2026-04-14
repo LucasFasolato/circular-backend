@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import { ForbiddenError } from '../../../common/errors/forbidden.error';
 import { NotFoundError } from '../../../common/errors/not-found.error';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
+import { NotificationCommandService } from '../../notifications/application/notification-command.service';
 import { InteractionType } from '../domain/interaction-type.enum';
 import { interactionNotActiveError } from '../domain/interaction-errors';
 import { TradeProposalState } from '../domain/trade-proposal-state.enum';
@@ -17,6 +18,7 @@ export class RejectTradeProposalService {
     private readonly tradeProposalRepository: TradeProposalRepository,
     private readonly listingRepository: ListingRepository,
     private readonly interactionResponseFactory: InteractionResponseFactory,
+    private readonly notificationCommandService: NotificationCommandService,
   ) {}
 
   async execute(
@@ -58,6 +60,16 @@ export class RejectTradeProposalService {
       tradeProposal.rejectedAt = new Date();
       tradeProposal.resolvedByUserId = ownerUserId;
       await this.tradeProposalRepository.save(tradeProposal, manager);
+
+      await this.notificationCommandService.notifyInteractionRejected(
+        {
+          userId: tradeProposal.proposerUserId,
+          listingId: listing.id,
+          interactionId: tradeProposal.id,
+          interactionType: 'TRADE_PROPOSAL',
+        },
+        manager,
+      );
 
       return this.interactionResponseFactory.buildResolutionResponse({
         interactionType: InteractionType.TRADE_PROPOSAL,

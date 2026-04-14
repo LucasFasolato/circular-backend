@@ -10,6 +10,7 @@ import { ListingState } from '../../listings/domain/listing-state.enum';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
 import { MatchBootstrapService } from '../../matches/application/match-bootstrap.service';
 import { MatchSessionRepository } from '../../matches/infrastructure/match-session.repository';
+import { NotificationCommandService } from '../../notifications/application/notification-command.service';
 import { InteractionType } from '../domain/interaction-type.enum';
 import {
   interactionNotActiveError,
@@ -40,6 +41,7 @@ export class AcceptTradeProposalService {
     private readonly interactionConflictResolutionService: InteractionConflictResolutionService,
     private readonly matchBootstrapService: MatchBootstrapService,
     private readonly interactionResponseFactory: InteractionResponseFactory,
+    private readonly notificationCommandService: NotificationCommandService,
   ) {}
 
   async execute(
@@ -188,6 +190,18 @@ export class AcceptTradeProposalService {
         [...proposedListingIds, targetListing.id],
         tradeProposal.id,
         ownerUserId,
+        manager,
+      );
+
+      await this.notificationCommandService.notifyInteractionAccepted(
+        {
+          userId: tradeProposal.proposerUserId,
+          listingId: targetListing.id,
+          interactionId: tradeProposal.id,
+          interactionType: 'TRADE_PROPOSAL',
+          matchSessionId: match.matchSessionId,
+          conversationThreadId: match.conversationThreadId,
+        },
         manager,
       );
 

@@ -9,6 +9,7 @@ import { LISTING_LIMITS } from '../../listings/domain/listing-limits.constants';
 import { ListingState } from '../../listings/domain/listing-state.enum';
 import { ListingPhotoRepository } from '../../listings/infrastructure/listing-photo.repository';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
+import { NotificationCommandService } from '../../notifications/application/notification-command.service';
 import {
   AuditImageResult,
   IMAGE_MODERATION_PROVIDER,
@@ -28,6 +29,7 @@ export class ListingModerationWorkflowService {
     private readonly listingPhotoRepository: ListingPhotoRepository,
     private readonly moderationReviewRepository: ModerationReviewRepository,
     private readonly imageAuditRepository: ImageAuditRepository,
+    private readonly notificationCommandService: NotificationCommandService,
     @Inject(IMAGE_MODERATION_PROVIDER)
     private readonly imageModerationProvider: ImageModerationProvider,
   ) {}
@@ -184,6 +186,28 @@ export class ListingModerationWorkflowService {
       }
 
       await this.listingRepository.save(listingInTransaction, manager);
+
+      if (resolution.listingState === ListingState.OBSERVED) {
+        await this.notificationCommandService.notifyListingObserved(
+          {
+            userId: listingInTransaction.ownerUserId,
+            listingId: listingInTransaction.id,
+            moderationReasons: resolution.reasons.map((reason) => reason.code),
+          },
+          manager,
+        );
+      }
+
+      if (resolution.listingState === ListingState.REJECTED) {
+        await this.notificationCommandService.notifyListingRejected(
+          {
+            userId: listingInTransaction.ownerUserId,
+            listingId: listingInTransaction.id,
+            moderationReasons: resolution.reasons.map((reason) => reason.code),
+          },
+          manager,
+        );
+      }
 
       return resolution.listingState;
     });

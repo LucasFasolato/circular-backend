@@ -1,4 +1,6 @@
 import { MatchCommandService } from './match-command.service';
+import { MatchExpirationService } from './match-expiration.service';
+import { NotificationCommandService } from '../../notifications/application/notification-command.service';
 import { MatchSurfaceBuilder } from '../read-models/match-surface.builder';
 import { ListingRepository } from '../../listings/infrastructure/listing.repository';
 import { PurchaseIntentRepository } from '../../interactions/infrastructure/purchase-intent.repository';
@@ -96,7 +98,33 @@ describe('MatchCommandService', () => {
         },
         createdAt: new Date().toISOString(),
       }),
-      findMatchByConversationIdForViewer: jest.fn(),
+      findMatchByConversationIdForViewer: jest.fn().mockResolvedValue({
+        id: 'ms-1',
+        state: MatchSessionState.ACTIVE,
+        type: MatchType.PURCHASE,
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        ownerUserId: 'usr-owner',
+        counterpartyUserId: 'usr-buyer',
+        successConfirmedByOwnerAt: null,
+        successConfirmedByCounterpartyAt: null,
+        listing: {
+          id: 'lst-1',
+          photo: null,
+          category: 'TOPS',
+          size: 'M',
+          state: ListingState.RESERVED,
+        },
+        counterparty: {
+          id: 'usr-buyer',
+          firstName: 'Bruno',
+          instagramHandle: null,
+        },
+        conversation: {
+          id: 'conv-1',
+          state: ConversationThreadState.OPEN,
+        },
+        createdAt: new Date().toISOString(),
+      }),
     } as unknown as MatchReadRepository;
     const listingRepository = {
       findByIdForUpdate: jest.fn().mockResolvedValue(listing),
@@ -114,6 +142,21 @@ describe('MatchCommandService', () => {
     const proposedListingCommitmentRepository = {
       releaseByMatchSessionId,
     } as unknown as ProposedListingCommitmentRepository;
+    const matchExpirationService = {
+      expireLockedMatchIfDue: jest.fn().mockResolvedValue(false),
+      expireDueMatches: jest.fn().mockResolvedValue({
+        processedCount: 0,
+        expiredCount: 0,
+        skippedCount: 0,
+        errorsCount: 0,
+      }),
+    } as unknown as MatchExpirationService;
+    const notifyMatchCompletedMany = jest.fn().mockResolvedValue([]);
+    const notifyNewConversationMessage = jest.fn().mockResolvedValue(undefined);
+    const notificationCommandService = {
+      notifyMatchCompletedMany,
+      notifyNewConversationMessage,
+    } as unknown as NotificationCommandService;
 
     return {
       service: new MatchCommandService(
@@ -124,15 +167,20 @@ describe('MatchCommandService', () => {
         matchReadRepository,
         new MatchSurfaceBuilder(),
         listingRepository,
+        notificationCommandService,
         purchaseIntentRepository,
         tradeProposalRepository,
         proposedListingCommitmentRepository,
+        matchExpirationService,
       ),
       match,
       listing,
       conversation,
       purchaseIntent,
       releaseByMatchSessionId,
+      notifyMatchCompletedMany,
+      notifyNewConversationMessage,
+      conversationMessageRepository,
     };
   }
 
@@ -144,6 +192,7 @@ describe('MatchCommandService', () => {
       conversation,
       purchaseIntent,
       releaseByMatchSessionId,
+      notifyMatchCompletedMany,
     } = createService();
 
     const response = await service.confirmSuccess('usr-owner', 'ms-1');
@@ -156,7 +205,56 @@ describe('MatchCommandService', () => {
       'ms-1',
       expect.any(Object),
     );
+    expect(notifyMatchCompletedMany).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          userId: 'usr-owner',
+          listingId: 'lst-1',
+          matchSessionId: 'ms-1',
+        }),
+        expect.objectContaining({
+          userId: 'usr-buyer',
+          listingId: 'lst-1',
+          matchSessionId: 'ms-1',
+        }),
+      ],
+      expect.any(Object),
+    );
     expect(response.matchSession.state).toBe(MatchSessionState.COMPLETED);
     expect(response.listingState).toBe(ListingState.CLOSED);
+  });
+
+  it('creates a new message notification for the counterparty', async () => {
+    const {
+      service,
+      notifyNewConversationMessage,
+      conversationMessageRepository,
+    } = createService();
+    (conversationMessageRepository.create as jest.Mock).mockResolvedValue({
+      id: 'msg-1',
+    });
+    (conversationMessageRepository.findById as jest.Mock).mockResolvedValue({
+      id: 'msg-1',
+      messageType: 'TEXT',
+      textBody: 'hola',
+      quickActionCode: null,
+      createdAt: new Date('2026-04-14T12:00:00.000Z'),
+      metadata: {},
+      senderUserId: 'usr-owner',
+    });
+
+    await service.sendMessage('usr-owner', 'conv-1', 'hola');
+
+    expect(notifyNewConversationMessage).toHaveBeenCalledWith(
+      {
+        userId: 'usr-buyer',
+        matchSessionId: 'ms-1',
+        conversationThreadId: 'conv-1',
+        messageId: 'msg-1',
+        senderUserId: 'usr-owner',
+        messageType: 'TEXT',
+      },
+      expect.any(Object),
+    );
   });
 });

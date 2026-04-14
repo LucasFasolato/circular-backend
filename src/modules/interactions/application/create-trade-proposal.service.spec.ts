@@ -4,6 +4,7 @@ import { ListingRepository } from '../../listings/infrastructure/listing.reposit
 import { TradeProposalRepository } from '../infrastructure/trade-proposal.repository';
 import { TradeProposalItemRepository } from '../infrastructure/trade-proposal-item.repository';
 import { ProposedListingCommitmentRepository } from '../infrastructure/proposed-listing-commitment.repository';
+import { NotificationCommandService } from '../../notifications/application/notification-command.service';
 import { InteractionResponseFactory } from './interaction-response.factory';
 import { ListingState } from '../../listings/domain/listing-state.enum';
 
@@ -60,6 +61,10 @@ describe('CreateTradeProposalService', () => {
     const matchSessionRepository = {
       hasActiveByListingIds: jest.fn().mockResolvedValue(false),
     } as unknown as MatchSessionRepository;
+    const notifyTradeProposalReceived = jest.fn().mockResolvedValue(undefined);
+    const notificationCommandService = {
+      notifyTradeProposalReceived,
+    } as unknown as NotificationCommandService;
 
     return {
       service: new CreateTradeProposalService(
@@ -70,13 +75,19 @@ describe('CreateTradeProposalService', () => {
         commitmentRepository,
         matchSessionRepository,
         new InteractionResponseFactory(),
+        notificationCommandService,
       ),
       createManyTradeProposalItems,
+      notifyTradeProposalReceived,
     };
   }
 
   it('creates a valid 1:N trade proposal', async () => {
-    const { service, createManyTradeProposalItems } = createService();
+    const {
+      service,
+      createManyTradeProposalItems,
+      notifyTradeProposalReceived,
+    } = createService();
 
     const result = await service.execute('usr-proposer', 'lst-target', {
       source: 'LISTING_DETAIL',
@@ -85,6 +96,16 @@ describe('CreateTradeProposalService', () => {
 
     expect(createManyTradeProposalItems).toHaveBeenCalledWith(
       [{ tradeProposalId: 'tp-1', proposedListingId: 'lst-proposed' }],
+      expect.any(Object),
+    );
+    expect(notifyTradeProposalReceived).toHaveBeenCalledWith(
+      {
+        userId: 'usr-owner',
+        listingId: 'lst-target',
+        tradeProposalId: 'tp-1',
+        proposerUserId: 'usr-proposer',
+        proposedListingIds: ['lst-proposed'],
+      },
       expect.any(Object),
     );
     expect(result.tradeProposal.state).toBe('ACTIVE');
